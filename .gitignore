@@ -8,3 +8,7 @@
 /captures/
 .externalNativeBuild/
 .cxx/
+.idea/
+.kotlin/
+.idea/
+.kotlin/
