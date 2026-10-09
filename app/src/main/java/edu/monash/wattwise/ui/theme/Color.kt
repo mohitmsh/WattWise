@@ -16,3 +16,7 @@ val Amber = Color(0xFFFFDE00)
 val Coral = Color(0xFFFF0026)
 val StatusGood = Color(0xFF16EC06)
 val SoftBlue = Color(0xFF72B9DE)
+
+// Background gradient behind every screen, from top to bottom.
+val GradientTop = Color(0xFF202C32)
+val GradientBottom = Color(0xFF0D1215)
