@@ -16,6 +16,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import edu.monash.wattwise.ui.theme.Amber
+import edu.monash.wattwise.ui.theme.DinPro
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -141,5 +146,51 @@ fun StatusPill(text: String, color: Color, modifier: Modifier = Modifier) {
         Box(Modifier.size(7.dp).background(color, CircleShape))
         Spacer(Modifier.width(7.dp))
         Text(text.uppercase(), style = MaterialTheme.typography.labelMedium, color = color)
+    }
+}
+
+/**
+ * Tile showing one reading with an icon, its value and a status chip, for
+ * example an appliance's power with "RUNNING NOW".
+ *
+ * @param isGood colours the chip green when true and amber when false. The
+ * chip text always says the status in words as well.
+ */
+@Composable
+fun MonitorTile(
+    icon: Int,
+    label: String,
+    value: String,
+    unit: String,
+    chipText: String,
+    isGood: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val chipColor = if (isGood) Electric else Amber
+    Column(
+        modifier
+            .background(Surface, RoundedCornerShape(Dimens.CardRadius))
+            .padding(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(painterResource(icon), contentDescription = null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(value, fontFamily = DinPro, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+            Spacer(Modifier.width(3.dp))
+            Text(unit, style = MaterialTheme.typography.labelLarge, color = TextSecondary, modifier = Modifier.padding(bottom = 5.dp))
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            chipText.uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color = chipColor,
+            modifier = Modifier
+                .background(chipColor.copy(alpha = .14f), RoundedCornerShape(4.dp))
+                .padding(horizontal = 7.dp, vertical = 4.dp),
+        )
     }
 }

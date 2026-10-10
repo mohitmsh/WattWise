@@ -1,6 +1,8 @@
 package edu.monash.wattwise.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,73 +12,65 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import edu.monash.wattwise.ui.theme.Dimens
 import edu.monash.wattwise.ui.theme.DinPro
+import edu.monash.wattwise.ui.theme.OnAccent
 import edu.monash.wattwise.ui.theme.SurfaceRaised
-import edu.monash.wattwise.ui.theme.TextPrimary
 import edu.monash.wattwise.ui.theme.TextSecondary
-import edu.monash.wattwise.ui.theme.TextTertiary
 
-/** One usage event in the home screen timeline. */
+/**
+ * One activity on the home screen: a coloured badge with an icon and the
+ * energy used, the activity name, and its start and end times on the right.
+ * Tapping the row opens the screen with more detail.
+ */
 @Composable
-fun EnergyTimelineRow(value: String, label: String, time: String, detail: String, color: Color) {
+fun ActivityRow(
+    icon: Int,
+    value: String,
+    label: String,
+    startTime: String,
+    endTime: String,
+    color: Color,
+    onClick: () -> Unit,
+) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 7.dp, vertical = 10.dp),
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .background(SurfaceRaised, RoundedCornerShape(8.dp))
+            .padding(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier.width(78.dp).height(46.dp).background(color.copy(alpha = .22f), RoundedCornerShape(8.dp)),
-            contentAlignment = Alignment.Center,
+        Row(
+            Modifier.width(96.dp).height(40.dp).background(color, RoundedCornerShape(6.dp)),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
         ) {
-            Text(value, fontFamily = DinPro, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = color)
+            Icon(painterResource(icon), contentDescription = null, tint = OnAccent, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(7.dp))
+            Text(value, fontFamily = DinPro, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OnAccent)
         }
         Spacer(Modifier.width(13.dp))
-        Column(Modifier.weight(1f)) {
-            Text(label.uppercase(), style = MaterialTheme.typography.labelLarge)
-            Text(detail, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Text(label.uppercase(), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+        Column(horizontalAlignment = Alignment.End) {
+            Text(endTime, fontFamily = DinPro, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = TextSecondary)
+            Spacer(Modifier.height(5.dp))
+            Text(startTime, fontFamily = DinPro, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = TextSecondary)
         }
-        Text(time, fontFamily = DinPro, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextSecondary)
-    }
-}
-
-/** One electrical reading with a comparison line, used on the live screen. */
-@Composable
-fun MetricRow(label: String, value: String, comparison: String, color: Color = TextPrimary) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(28.dp).background(SurfaceRaised, CircleShape), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(7.dp).background(color, CircleShape))
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(label.uppercase(), style = MaterialTheme.typography.labelLarge)
-            Text(comparison, style = MaterialTheme.typography.bodyMedium, color = TextTertiary)
-        }
-        Text(value, fontFamily = DinPro, fontWeight = FontWeight.Bold, fontSize = 21.sp)
-    }
-}
-
-/** One factor behind a score: its name, an explanation and a coloured result. */
-@Composable
-fun ScoreFactorRow(label: String, value: String, explanation: String, color: Color) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(7.dp).background(color, RoundedCornerShape(Dimens.PILL_CORNER_PERCENT)))
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.titleMedium)
-            Text(explanation, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
-        }
-        Spacer(Modifier.width(10.dp))
-        Text(value.uppercase(), style = MaterialTheme.typography.labelLarge, color = color)
+        Spacer(Modifier.width(7.dp))
+        // The line joins the two times, showing they are the end and the start of one period.
+        Box(Modifier.width(2.dp).height(30.dp).background(color))
+        Spacer(Modifier.width(4.dp))
     }
 }
