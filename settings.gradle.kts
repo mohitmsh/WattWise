@@ -11,6 +11,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // MPAndroidChart, used for the report charts, is published on JitPack.
+        maven("https://jitpack.io")
     }
 }
 

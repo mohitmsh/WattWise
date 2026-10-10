@@ -11,23 +11,30 @@ data class Appliance(
     val name: String,
     val category: ApplianceCategory,
     val watts: Int,
-    val dailyCost: Double,
-    val status: ApplianceStatus,
+    /** Hours the appliance runs on a normal day, entered by the user. */
+    val hoursPerDay: Double,
+    /**
+     * The smart-meter channel that measures this appliance, like a smart plug.
+     * Null means it is not measured, so its energy is estimated from power and hours.
+     */
+    val meterChannel: MeterAppliance? = null,
 )
 
-/** Groups shown in the category dropdown of the appliance form. */
-enum class ApplianceCategory(val label: String) {
-    KITCHEN("Kitchen"),
-    COOLING("Cooling"),
-    HEATING("Heating"),
-    LAUNDRY("Laundry"),
-    ELECTRONICS("Electronics"),
+/**
+ * Groups shown in the category dropdown of the appliance form.
+ *
+ * @param isFlexible true when the appliance can usually be run at a different time of day.
+ */
+enum class ApplianceCategory(val label: String, val isFlexible: Boolean) {
+    KITCHEN("Kitchen", true),
+    COOLING("Cooling", false),
+    HEATING("Heating", false),
+    LAUNDRY("Laundry", true),
+    ELECTRONICS("Electronics", false),
 }
 
-/** How an appliance's usage compares with its expected range. */
+/** How large an appliance's share of the household's daily energy target is. */
 enum class ApplianceStatus(val label: String) {
-    HIGH("High"),
+    HIGH("High use"),
     NORMAL("Normal"),
-    SCHEDULED("Scheduled"),
-    NEW("New"),
 }

@@ -8,7 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import edu.monash.wattwise.data.model.Appliance
 import edu.monash.wattwise.data.model.ApplianceCategory
-import edu.monash.wattwise.data.model.ApplianceStatus
+import edu.monash.wattwise.data.model.MeterAppliance
 import edu.monash.wattwise.data.repository.ApplianceRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -33,19 +33,37 @@ class ApplianceViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     // Database writes run on the IO dispatcher so they never block the UI thread.
-    fun addAppliance(name: String, category: ApplianceCategory, watts: Int) {
+    fun addAppliance(
+        name: String,
+        category: ApplianceCategory,
+        watts: Int,
+        hoursPerDay: Double,
+        meterChannel: MeterAppliance?,
+    ) {
         val newAppliance = Appliance(
             name = name,
             category = category,
             watts = watts,
-            dailyCost = 0.0,
-            status = ApplianceStatus.NEW,
+            hoursPerDay = hoursPerDay,
+            meterChannel = meterChannel,
         )
         viewModelScope.launch(Dispatchers.IO) { repository.insert(newAppliance) }
     }
 
-    fun updateSelectedAppliance(name: String, category: ApplianceCategory, watts: Int) {
-        val updated = selectedAppliance?.copy(name = name, category = category, watts = watts) ?: return
+    fun updateSelectedAppliance(
+        name: String,
+        category: ApplianceCategory,
+        watts: Int,
+        hoursPerDay: Double,
+        meterChannel: MeterAppliance?,
+    ) {
+        val updated = selectedAppliance?.copy(
+            name = name,
+            category = category,
+            watts = watts,
+            hoursPerDay = hoursPerDay,
+            meterChannel = meterChannel,
+        ) ?: return
         selectedAppliance = updated
         viewModelScope.launch(Dispatchers.IO) { repository.update(updated) }
     }

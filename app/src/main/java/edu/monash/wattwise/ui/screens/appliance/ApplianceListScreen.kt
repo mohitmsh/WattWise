@@ -34,21 +34,27 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import edu.monash.wattwise.R
 import edu.monash.wattwise.data.model.Appliance
+import edu.monash.wattwise.data.model.ApplianceRun
 import edu.monash.wattwise.data.model.ApplianceStatus
 import edu.monash.wattwise.ui.components.ScreenHeader
 import edu.monash.wattwise.ui.components.StatusPill
-import edu.monash.wattwise.ui.theme.Coral
+import edu.monash.wattwise.ui.theme.Amber
 import edu.monash.wattwise.ui.theme.Dimens
 import edu.monash.wattwise.ui.theme.Electric
 import edu.monash.wattwise.ui.theme.Surface
 import edu.monash.wattwise.ui.theme.SurfaceRaised
 import edu.monash.wattwise.ui.theme.TextSecondary
+import edu.monash.wattwise.utils.EnergyCalculator
 import edu.monash.wattwise.utils.Formatters
+import edu.monash.wattwise.utils.TariffCalculator
 
 /** Searchable list of the household's appliances. Tapping a row opens its detail screen. */
 @Composable
 fun ApplianceListScreen(
     appliances: List<Appliance>,
+    tariff: String,
+    dailyTargetKwh: Int,
+    applianceRuns: List<ApplianceRun>,
     onBack: () -> Unit,
     onAdd: () -> Unit,
     onSelect: (Appliance) -> Unit,
@@ -61,14 +67,15 @@ fun ApplianceListScreen(
 
     Column(Modifier.fillMaxSize().padding(horizontal = Dimens.ScreenPadding)) {
         Spacer(Modifier.height(16.dp))
-        ScreenHeader("Your devices", "Appliances", "Tap a device to see its impact.", onBack)
+        ScreenHeader("Your devices", "Appliances", "Search by name or category. Tap a device to see its cost.", onBack)
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            label = { Text("Search appliances") },
+            label = { Text("Search by name or category") },
+            placeholder = { Text("e.g. heater or laundry") },
             leadingIcon = { Icon(painterResource(R.drawable.search_icon), contentDescription = null) },
         )
         Spacer(Modifier.height(14.dp))
@@ -87,7 +94,7 @@ fun ApplianceListScreen(
             contentPadding = PaddingValues(bottom = 24.dp),
         ) {
             items(matchingAppliances, key = { it.id }) { appliance ->
-                ApplianceRow(appliance, onClick = { onSelect(appliance) })
+                ApplianceRow(appliance, tariff, dailyTargetKwh, applianceRuns, onClick = { onSelect(appliance) })
             }
             if (matchingAppliances.isEmpty()) {
                 item {
@@ -106,10 +113,20 @@ fun ApplianceListScreen(
     }
 }
 
-/** One appliance in the list: initial, name, category, power, cost and status. */
+/** One appliance in the list: initial, name, category, daily energy, daily cost and status. */
 @Composable
-private fun ApplianceRow(appliance: Appliance, onClick: () -> Unit) {
-    val statusColor = if (appliance.status == ApplianceStatus.HIGH) Coral else Electric
+private fun ApplianceRow(
+    appliance: Appliance,
+    tariff: String,
+    dailyTargetKwh: Int,
+    applianceRuns: List<ApplianceRun>,
+    onClick: () -> Unit,
+) {
+    // A linked appliance shows what the meter measured today; others show the estimate.
+    val measuredKwh = EnergyCalculator.measuredKwhToday(appliance, applianceRuns)
+    val dailyKwh = measuredKwh ?: EnergyCalculator.applianceDailyKwh(appliance)
+    val status = EnergyCalculator.applianceStatus(appliance, dailyTargetKwh)
+    val statusColor = if (status == ApplianceStatus.HIGH) Amber else Electric
     Row(
         Modifier
             .fillMaxWidth()
@@ -125,15 +142,22 @@ private fun ApplianceRow(appliance: Appliance, onClick: () -> Unit) {
         Column(Modifier.weight(1f)) {
             Text(appliance.name, style = MaterialTheme.typography.titleMedium)
             Text(
-                "${appliance.category.label} · ${appliance.watts} W",
+                if (measuredKwh != null) {
+                    "Measured · ${Formatters.formatKwh(dailyKwh)} kWh today"
+                } else {
+                    "Estimate · ${Formatters.formatKwh(dailyKwh)} kWh a day"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary,
             )
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(Formatters.formatDailyCost(appliance.dailyCost), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                Formatters.formatDailyCost(dailyKwh * TariffCalculator.averageRate(tariff)),
+                style = MaterialTheme.typography.bodyMedium,
+            )
             Spacer(Modifier.height(5.dp))
-            StatusPill(appliance.status.label, statusColor)
+            StatusPill(status.label, statusColor)
         }
     }
 }
