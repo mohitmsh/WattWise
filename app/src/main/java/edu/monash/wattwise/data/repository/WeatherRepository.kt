@@ -10,6 +10,14 @@ class WeatherRepository {
     private val weatherService = RetrofitObject.retrofitService
 
     suspend fun getWeather(latitude: Double, longitude: Double): WeatherResponse {
-        return weatherService.getWeather(latitude, longitude, WeatherApi.CURRENT_FIELDS)
+        return weatherService.getWeather(
+            latitude = latitude,
+            longitude = longitude,
+            currentFields = WeatherApi.CURRENT_FIELDS,
+            dailyFields = WeatherApi.DAILY_FIELDS,
+            hourlyFields = WeatherApi.HOURLY_FIELDS,
+            timezone = WeatherApi.TIMEZONE,
+            forecastDays = WeatherApi.FORECAST_DAYS,
+        )
     }
 }
