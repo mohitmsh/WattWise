@@ -20,13 +20,13 @@ object Routes {
     const val APPLIANCE_DETAIL = "appliance_detail"
     const val GOALS = "goals"
     const val EFFICIENCY = "efficiency"
-    const val MATURITY = "maturity"
+    const val MAP = "map"
 }
 
 /** The main screens reachable from the bottom navigation bar, in display order. */
 enum class BottomDestination(val route: String, val label: String, val icon: Int) {
     HOME(Routes.TODAY, "Home", R.drawable.home_icon),
-    LIVE(Routes.LIVE, "Live", R.drawable.live_icon),
+    MAP(Routes.MAP, "Map", R.drawable.map_icon),
     USAGE(Routes.TRENDS, "Usage", R.drawable.usage_icon),
     INSIGHTS(Routes.COACH, "Insights", R.drawable.insights_icon),
     MORE(Routes.PROFILE, "More", R.drawable.more_icon);

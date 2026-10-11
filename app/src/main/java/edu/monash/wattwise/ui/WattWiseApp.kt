@@ -20,7 +20,11 @@ import edu.monash.wattwise.ui.theme.GradientTop
 import edu.monash.wattwise.ui.theme.Ink
 import edu.monash.wattwise.ui.theme.TextPrimary
 import edu.monash.wattwise.viewmodel.ApplianceViewModel
+import edu.monash.wattwise.viewmodel.AuthViewModel
 import edu.monash.wattwise.viewmodel.HouseholdViewModel
+import edu.monash.wattwise.viewmodel.ScenarioViewModel
+import edu.monash.wattwise.viewmodel.SmartMeterViewModel
+import edu.monash.wattwise.viewmodel.UsageViewModel
 import edu.monash.wattwise.viewmodel.WeatherViewModel
 
 /**
@@ -32,6 +36,10 @@ fun WattWiseApp(
     applianceViewModel: ApplianceViewModel,
     householdViewModel: HouseholdViewModel,
     weatherViewModel: WeatherViewModel,
+    smartMeterViewModel: SmartMeterViewModel,
+    usageViewModel: UsageViewModel,
+    scenarioViewModel: ScenarioViewModel,
+    authViewModel: AuthViewModel,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -51,6 +59,10 @@ fun WattWiseApp(
             applianceViewModel = applianceViewModel,
             householdViewModel = householdViewModel,
             weatherViewModel = weatherViewModel,
+            smartMeterViewModel = smartMeterViewModel,
+            usageViewModel = usageViewModel,
+            scenarioViewModel = scenarioViewModel,
+            authViewModel = authViewModel,
             modifier = Modifier
                 .fillMaxSize()
                 .background(Brush.verticalGradient(listOf(GradientTop, Ink, GradientBottom)))

@@ -2,6 +2,8 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
+    // Reads app/google-services.json so the app can connect to the Firebase project.
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -51,6 +53,24 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.squareup.retrofit2:converter-gson:3.0.0")
     implementation("com.google.code.gson:gson:2.14.0")
+
+    // Firebase Authentication for email/password and Google sign-in.
+    implementation(platform("com.google.firebase:firebase-bom:34.0.0"))
+    implementation("com.google.firebase:firebase-auth")
+
+    // Credential Manager shows the Google account chooser for Google sign-in.
+    implementation("androidx.credentials:credentials:1.5.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+
+    // WorkManager for the background usage summary.
+    implementation("androidx.work:work-runtime-ktx:2.10.3")
+
+    // MapLibre map for choosing the home location.
+    implementation("org.maplibre.gl:android-sdk:13.6.1")
+
+    // Bar and pie charts for the usage report.
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

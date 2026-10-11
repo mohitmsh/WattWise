@@ -5,14 +5,22 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import edu.monash.wattwise.data.model.Appliance
+import edu.monash.wattwise.data.model.HourlyUsage
 import edu.monash.wattwise.data.model.HouseholdProfile
+import edu.monash.wattwise.data.model.ScenarioPlan
 
 /** The app's Room database. Increase [version] whenever an entity changes. */
-@Database(entities = [Appliance::class, HouseholdProfile::class], version = 1, exportSchema = false)
+@Database(
+    entities = [Appliance::class, HouseholdProfile::class, HourlyUsage::class, ScenarioPlan::class],
+    version = 7,
+    exportSchema = false,
+)
 abstract class WattWiseDatabase : RoomDatabase() {
 
     abstract fun applianceDao(): ApplianceDao
     abstract fun householdProfileDao(): HouseholdProfileDao
+    abstract fun hourlyUsageDao(): HourlyUsageDao
+    abstract fun scenarioPlanDao(): ScenarioPlanDao
 
     companion object {
         private const val DATABASE_NAME = "wattwise_database"

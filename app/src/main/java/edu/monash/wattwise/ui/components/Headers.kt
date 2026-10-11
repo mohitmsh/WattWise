@@ -1,6 +1,7 @@
 package edu.monash.wattwise.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,12 +26,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import edu.monash.wattwise.ui.theme.Dimens
 import edu.monash.wattwise.ui.theme.Electric
-import edu.monash.wattwise.ui.theme.Ink
+import edu.monash.wattwise.ui.theme.OnAccent
 import edu.monash.wattwise.ui.theme.StatusGood
 import edu.monash.wattwise.ui.theme.Surface
 import edu.monash.wattwise.ui.theme.SurfaceRaised
 import edu.monash.wattwise.ui.theme.TextPrimary
 import edu.monash.wattwise.ui.theme.TextSecondary
+import edu.monash.wattwise.ui.theme.TextTertiary
 
 /** App logo and name shown on the onboarding screen. */
 @Composable
@@ -40,7 +42,7 @@ fun BrandMark(modifier: Modifier = Modifier) {
             Modifier.size(28.dp).background(Electric, RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            Text("W", color = Ink, fontWeight = FontWeight.Black)
+            Text("W", color = OnAccent, fontWeight = FontWeight.Black)
         }
         Spacer(Modifier.width(9.dp))
         Text("WATTWISE", style = MaterialTheme.typography.labelLarge, letterSpacing = 2.sp)
@@ -89,33 +91,40 @@ fun SectionTitle(title: String, action: String? = null, onAction: () -> Unit = {
     }
 }
 
-/** Top bar of the dashboard tabs: profile initial, day selector and meter status. */
+/**
+ * Top bar of the home screen: today's date on the left and the state of the
+ * smart meter on the right.
+ *
+ * @param isMeterConnected true once the simulator has delivered a reading.
+ * @param onMeterClick opens the live readings screen.
+ */
 @Composable
-fun DashboardTopBar() {
+fun DashboardTopBar(dateText: String, isMeterConnected: Boolean, onMeterClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().heightIn(min = 56.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(34.dp).background(SurfaceRaised, CircleShape), contentAlignment = Alignment.Center) {
-            Text("A", style = MaterialTheme.typography.labelLarge)
+        Column(Modifier.weight(1f)) {
+            Text("TODAY", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+            Text(dateText, style = MaterialTheme.typography.labelLarge)
         }
-        Spacer(Modifier.weight(1f))
         Row(
             Modifier
+                .clickable(onClick = onMeterClick)
                 .background(Surface, RoundedCornerShape(Dimens.PILL_CORNER_PERCENT))
                 .padding(horizontal = 13.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("‹", color = TextSecondary, fontSize = 20.sp)
-            Spacer(Modifier.width(12.dp))
-            Text("TODAY", style = MaterialTheme.typography.labelLarge)
-            Spacer(Modifier.width(12.dp))
-            Text("›", color = TextSecondary, fontSize = 20.sp)
-        }
-        Spacer(Modifier.weight(1f))
-        Box(Modifier.size(34.dp).background(SurfaceRaised, CircleShape), contentAlignment = Alignment.Center) {
-            Text("⌁", color = TextPrimary, fontSize = 19.sp)
-            Box(Modifier.size(Dimens.StatusDotSize).align(Alignment.TopEnd).background(StatusGood, CircleShape))
+            Box(
+                Modifier
+                    .size(Dimens.StatusDotSize)
+                    .background(if (isMeterConnected) StatusGood else TextTertiary, CircleShape),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                if (isMeterConnected) "LIVE READINGS  ›" else "METER STARTING",
+                style = MaterialTheme.typography.labelMedium,
+            )
         }
     }
 }

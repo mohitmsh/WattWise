@@ -10,6 +10,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.RadioButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -21,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import edu.monash.wattwise.constants.HouseholdOptions
+import edu.monash.wattwise.constants.WeatherApi
 import edu.monash.wattwise.data.model.HouseholdProfile
 import edu.monash.wattwise.ui.components.DateField
 import edu.monash.wattwise.ui.components.DropdownField
@@ -56,6 +62,7 @@ fun HouseholdSetupScreen(
     var dailyTargetKwh by remember(existing) {
         mutableFloatStateOf(existing?.dailyTargetKwh?.toFloat() ?: HouseholdOptions.DEFAULT_DAILY_TARGET_KWH)
     }
+    var isRenting by remember(existing) { mutableStateOf(existing?.isRenting ?: true) }
     var billingStartDateMillis by remember(existing) {
         mutableLongStateOf(existing?.billingStartDateMillis ?: System.currentTimeMillis())
     }
@@ -64,7 +71,7 @@ fun HouseholdSetupScreen(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Dimens.ScreenPaddingWide),
     ) {
         Text(
-            if (isEditing) "HOUSEHOLD DETAILS" else "STEP 1 OF 1",
+            if (isEditing) "HOUSEHOLD DETAILS" else "STEP 2 OF 2",
             style = MaterialTheme.typography.labelMedium,
             color = Electric,
         )
@@ -78,10 +85,33 @@ fun HouseholdSetupScreen(
             style = MaterialTheme.typography.bodyMedium,
             color = TextSecondary,
         )
-        Spacer(Modifier.height(28.dp))
-        DropdownField("Home type", HouseholdOptions.HOME_TYPES, homeType, onSelected = { homeType = it })
+        Spacer(Modifier.height(18.dp))
+        Text("* Required", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Spacer(Modifier.height(10.dp))
+        DropdownField("Home type *", HouseholdOptions.HOME_TYPES, homeType, onSelected = { homeType = it })
         Spacer(Modifier.height(14.dp))
-        DropdownField("Electricity tariff", HouseholdOptions.TARIFFS, tariff, onSelected = { tariff = it })
+        // Radio buttons suit a choice between two options where both should stay visible.
+        Text("DO YOU RENT OR OWN? *", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+        HouseholdOptions.OWNERSHIP_OPTIONS.forEach { option ->
+            val isOptionRenting = option == HouseholdOptions.RENTING
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .selectable(selected = isOptionRenting == isRenting, onClick = { isRenting = isOptionRenting }),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(selected = isOptionRenting == isRenting, onClick = null)
+                Spacer(Modifier.width(10.dp))
+                Text(option, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(vertical = 10.dp))
+            }
+        }
+        Text(
+            "Renters get advice about habits and settings. Owners also get advice about upgrades.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextSecondary,
+        )
+        Spacer(Modifier.height(14.dp))
+        DropdownField("Electricity tariff *", HouseholdOptions.TARIFFS, tariff, onSelected = { tariff = it })
         Spacer(Modifier.height(14.dp))
         DateField(
             label = "Billing period start",
@@ -97,6 +127,7 @@ fun HouseholdSetupScreen(
             onValueChange = { occupants = it },
             valueRange = HouseholdOptions.MIN_OCCUPANTS..HouseholdOptions.MAX_OCCUPANTS,
             steps = sliderSteps(HouseholdOptions.MIN_OCCUPANTS, HouseholdOptions.MAX_OCCUPANTS, step = 1f),
+            hint = "Everyone who lives in the home. More people usually means more energy.",
         )
         Spacer(Modifier.height(16.dp))
         LabelledSlider(
@@ -110,17 +141,25 @@ fun HouseholdSetupScreen(
                 HouseholdOptions.MAX_DAILY_TARGET_KWH,
                 HouseholdOptions.DAILY_TARGET_STEP_KWH,
             ),
-            hint = "You can change this target later.",
+            hint = "A typical two-person home uses about 12 kWh a day. Home and Usage show each day " +
+                "against this target, and you can change it later.",
         )
         Spacer(Modifier.height(28.dp))
         PrimaryAction(if (isEditing) "Save changes" else "Create my dashboard") {
             onSave(
+                // The home location is chosen on the map, so keep the saved one when editing.
                 HouseholdProfile(
                     homeType = homeType,
                     tariff = tariff,
                     occupants = occupants.roundToInt(),
                     dailyTargetKwh = dailyTargetKwh.roundToInt(),
                     billingStartDateMillis = billingStartDateMillis,
+                    isRenting = isRenting,
+                    lightTheme = existing?.lightTheme ?: false,
+                    usageAlerts = existing?.usageAlerts ?: true,
+                    locationName = existing?.locationName ?: WeatherApi.DEFAULT_LOCATION_NAME,
+                    latitude = existing?.latitude ?: WeatherApi.DEFAULT_LATITUDE,
+                    longitude = existing?.longitude ?: WeatherApi.DEFAULT_LONGITUDE,
                 ),
             )
         }

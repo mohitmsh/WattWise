@@ -21,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import edu.monash.wattwise.constants.ValidationRules
+import edu.monash.wattwise.ui.components.GoogleSignInButton
+import edu.monash.wattwise.ui.theme.Coral
 import edu.monash.wattwise.ui.components.PasswordField
 import edu.monash.wattwise.ui.components.PrimaryAction
 import edu.monash.wattwise.ui.components.ScreenHeader
@@ -29,14 +31,33 @@ import edu.monash.wattwise.ui.theme.Electric
 import edu.monash.wattwise.ui.theme.TextSecondary
 import edu.monash.wattwise.utils.Validators
 
-/** Sign-in form for existing users. Errors appear only after the first sign-in attempt. */
+/**
+ * Sign-in form for existing users, with email and password or a Google account.
+ * Field errors appear only after the first sign-in attempt.
+ *
+ * @param isLoading true while Firebase is checking the details.
+ * @param errorMessage the reason sign-in failed, or null.
+ * @param infoMessage a confirmation such as "reset link sent", or null.
+ */
 @Composable
-fun LoginScreen(onBack: () -> Unit, onLogin: () -> Unit, onRegister: () -> Unit) {
+fun LoginScreen(
+    isLoading: Boolean,
+    errorMessage: String?,
+    infoMessage: String?,
+    onBack: () -> Unit,
+    onLogin: (email: String, password: String) -> Unit,
+    onGoogleIdToken: (String) -> Unit,
+    onGoogleError: (String) -> Unit,
+    onForgotPassword: (email: String) -> Unit,
+    onRegister: () -> Unit,
+) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var attempted by remember { mutableStateOf(false) }
+    // Set when "Forgot password?" is tapped without a valid email in the field.
+    var emailNeededForReset by remember { mutableStateOf(false) }
 
-    val emailError = attempted && !Validators.isValidEmail(email)
+    val emailError = (attempted || emailNeededForReset) && !Validators.isValidEmail(email)
     val passwordError = attempted && !Validators.isValidPassword(password)
 
     Column(
@@ -47,41 +68,64 @@ fun LoginScreen(onBack: () -> Unit, onLogin: () -> Unit, onRegister: () -> Unit)
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Email address") },
+            label = { Text("Email address *") },
+            placeholder = { Text("e.g. name@example.com") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             isError = emailError,
-            supportingText = { if (emailError) Text("Enter a valid email address") },
+            supportingText = {
+                if (emailError) {
+                    Text(if (emailNeededForReset) "Enter your email first, then tap Forgot password" else "Enter a valid email address")
+                }
+            },
         )
         Spacer(Modifier.height(Dimens.FieldSpacing))
         PasswordField(
             value = password,
             onValueChange = { password = it },
-            label = "Password",
+            label = "Password *",
             hint = "Use at least ${ValidationRules.MIN_PASSWORD_LENGTH} characters",
             isError = passwordError,
         )
         TextButton(
-            onClick = { /* Password recovery is connected once authentication is implemented. */ },
+            onClick = {
+                if (Validators.isValidEmail(email)) {
+                    emailNeededForReset = false
+                    onForgotPassword(email)
+                } else {
+                    emailNeededForReset = true
+                }
+            },
             modifier = Modifier.align(Alignment.End),
         ) {
             Text("FORGOT PASSWORD?", color = Electric)
         }
+        AuthMessages(errorMessage, infoMessage)
         Spacer(Modifier.height(10.dp))
-        PrimaryAction("Sign in") {
+        PrimaryAction(if (isLoading) "Signing in…" else "Sign in") {
             attempted = true
-            if (Validators.isValidEmail(email) && Validators.isValidPassword(password)) onLogin()
+            if (!isLoading && Validators.isValidEmail(email) && Validators.isValidPassword(password)) {
+                onLogin(email, password)
+            }
         }
+        Spacer(Modifier.height(12.dp))
+        GoogleSignInButton(enabled = !isLoading, onIdToken = onGoogleIdToken, onError = onGoogleError)
         Spacer(Modifier.height(12.dp))
         TextButton(onClick = onRegister, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text("NEW HERE? CREATE AN ACCOUNT", color = Electric)
         }
-        Spacer(Modifier.height(22.dp))
-        Text(
-            "Prototype tip: use hello@wattwise.app and any " +
-                "${ValidationRules.MIN_PASSWORD_LENGTH}-character password.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary,
-        )
+    }
+}
+
+/** The error or confirmation from the last sign-in request, shown under the form. */
+@Composable
+fun AuthMessages(errorMessage: String?, infoMessage: String?) {
+    if (errorMessage != null) {
+        Spacer(Modifier.height(6.dp))
+        Text(errorMessage, color = Coral, style = MaterialTheme.typography.bodyMedium)
+    }
+    if (infoMessage != null) {
+        Spacer(Modifier.height(6.dp))
+        Text(infoMessage, color = Electric, style = MaterialTheme.typography.bodyMedium)
     }
 }

@@ -39,13 +39,15 @@ fun ProfileScreen(
     profile: HouseholdProfile?,
     applianceCount: Int,
     onEditHousehold: () -> Unit,
+    onLightThemeChange: (Boolean) -> Unit,
+    onUsageAlertsChange: (Boolean) -> Unit,
+    onHomeLocation: () -> Unit,
     onAppliances: () -> Unit,
     onGoals: () -> Unit,
+    userName: String?,
+    userEmail: String?,
     onLogout: () -> Unit,
 ) {
-    var usageAlerts by remember { mutableStateOf(true) }
-    var weeklySummary by remember { mutableStateOf(true) }
-    var enhancedContrast by remember { mutableStateOf(false) }
 
     Column(
         Modifier
@@ -57,7 +59,9 @@ fun ProfileScreen(
         ScreenHeader(
             eyebrow = "Household",
             title = profile?.homeType ?: "Your household",
-            subtitle = profile?.let { "${it.occupants} occupants · ${it.tariff} tariff" }
+            subtitle = profile?.let {
+                "${if (it.isRenting) "Renting" else "Owner"} · ${it.occupants} occupants · ${it.tariff} tariff"
+            }
                 ?: "Add your household details to personalise recommendations.",
         )
         Spacer(Modifier.height(22.dp))
@@ -66,6 +70,11 @@ fun ProfileScreen(
             detail = profile?.let { "Billing period from ${Formatters.formatFormDate(it.billingStartDateMillis)}" }
                 ?: "Not set up yet",
             onClick = onEditHousehold,
+        )
+        SettingsLink(
+            title = "ENERGY MAP & HOME LOCATION",
+            detail = profile?.let { "${it.locationName} · used for weather advice" } ?: "Melbourne (default)",
+            onClick = onHomeLocation,
         )
         SettingsLink("APPLIANCES", "$applianceCount saved profiles", onAppliances)
         SettingsLink(
@@ -76,22 +85,34 @@ fun ProfileScreen(
         Spacer(Modifier.height(22.dp))
         Text("PREFERENCES", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
         Spacer(Modifier.height(8.dp))
-        LabelledSwitch("Smart usage alerts", "Unusual load and peak pricing", usageAlerts) { usageAlerts = it }
-        LabelledSwitch("Weekly summary", "Progress every Monday", weeklySummary) { weeklySummary = it }
-        LabelledSwitch("Enhanced contrast", "Stronger borders and labels", enhancedContrast) {
-            enhancedContrast = it
-        }
+        LabelledSwitch(
+            title = "Smart usage alerts",
+            detail = "A notification on the day you pass your daily target",
+            checked = profile?.usageAlerts ?: true,
+            onCheckedChange = onUsageAlertsChange,
+        )
+        LabelledSwitch(
+            title = "Light theme",
+            detail = "A bright background, easier to read in daylight",
+            checked = profile?.lightTheme ?: false,
+            onCheckedChange = onLightThemeChange,
+        )
         Spacer(Modifier.height(22.dp))
         SurfaceCard {
             Text("DATA & TRANSPARENCY", style = MaterialTheme.typography.labelMedium, color = Electric)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Recommendations explain which simulated readings and preferences influenced them. " +
-                    "Your prototype data remains on this device.",
+                "Every recommendation shows the readings and settings that produced it. Meter readings " +
+                    "are simulated from the public REFIT dataset, and your data stays on this device.",
                 color = TextSecondary,
             )
         }
         Spacer(Modifier.height(24.dp))
+        // The account that is signed in, from Firebase Authentication.
+        Text("SIGNED IN AS", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+        Text(userName ?: "WattWise user", style = MaterialTheme.typography.titleMedium)
+        Text(userEmail ?: "", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Spacer(Modifier.height(12.dp))
         OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) { Text("SIGN OUT") }
         Spacer(Modifier.height(28.dp))
     }

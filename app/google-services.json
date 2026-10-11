@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "356162162195",
+    "project_id": "wattwise-fit5046-g111",
+    "storage_bucket": "wattwise-fit5046-g111.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:356162162195:android:f13a9d4b7de9e474b6f9e6",
+        "android_client_info": {
+          "package_name": "edu.monash.wattwise"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "356162162195-4fhr7r3sbbltpsiq7qd4pd46oaa95oe8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "edu.monash.wattwise",
+            "certificate_hash": "f22504ce5553b1f1252126ba73884bb9750a93c4"
+          }
+        },
+        {
+          "client_id": "356162162195-83gireua4876c11oiqkhdji8jtiu1fco.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBere3Zj8sfTw_Qw-HiZW9rgDt0CaB9znE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "356162162195-83gireua4876c11oiqkhdji8jtiu1fco.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

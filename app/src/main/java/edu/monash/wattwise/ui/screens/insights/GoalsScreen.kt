@@ -1,5 +1,9 @@
 package edu.monash.wattwise.ui.screens.insights
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,12 +19,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import edu.monash.wattwise.constants.ScenarioRules
+import edu.monash.wattwise.data.model.EnergyContext
+import edu.monash.wattwise.data.model.ScenarioPlan
 import edu.monash.wattwise.ui.components.LabelledSlider
 import edu.monash.wattwise.ui.components.MetricTile
 import edu.monash.wattwise.ui.components.PrimaryAction
@@ -38,17 +43,41 @@ import kotlin.math.roundToInt
 
 /**
  * Scenario planner: the user adjusts when and how often laundry runs and sees
- * the estimated saving before saving the plan and adding a reminder.
+ * the estimated saving. The plan is saved to Room, and a daily reminder can be
+ * scheduled for it with AlarmManager.
+ *
+ * @param plan the plan saved in Room, or null if none has been saved yet.
+ * @param energyContext used to show today's progress; null until the first meter reading.
+ * @param tariff the household's tariff; it decides whether a later start is cheaper.
  */
 @Composable
-fun GoalsScreen(onBack: () -> Unit) {
-    var startHour by remember { mutableFloatStateOf(ScenarioRules.EARLIEST_START_HOUR) }
-    var dryerDays by remember { mutableFloatStateOf(ScenarioRules.DEFAULT_DRYER_DAYS) }
-    var scenarioSaved by remember { mutableStateOf(false) }
-    var reminderScheduled by remember { mutableStateOf(false) }
+fun GoalsScreen(
+    plan: ScenarioPlan?,
+    energyContext: EnergyContext?,
+    tariff: String,
+    onSavePlan: (startHour: Int, dryerDays: Int, monthlySaving: Double) -> Unit,
+    onSetReminder: (Boolean) -> Unit,
+    onDeletePlan: () -> Unit,
+    onBack: () -> Unit,
+) {
+    // The sliders start from the saved plan, and reset when the saved plan changes.
+    var startHour by remember(plan) {
+        mutableFloatStateOf(plan?.startHour?.toFloat() ?: ScenarioRules.EARLIEST_START_HOUR)
+    }
+    var dryerDays by remember(plan) {
+        mutableFloatStateOf(plan?.dryerDaysPerWeek?.toFloat() ?: ScenarioRules.DEFAULT_DRYER_DAYS)
+    }
 
-    val monthlySaving = SavingsCalculator.estimateMonthlySaving(startHour, dryerDays)
+    val monthlySaving = SavingsCalculator.estimateMonthlySaving(startHour.roundToInt(), dryerDays.roundToInt(), tariff)
     val startTimeText = Formatters.formatHour(startHour.roundToInt())
+    val hasUnsavedChanges = plan == null ||
+        plan.startHour != startHour.roundToInt() || plan.dryerDaysPerWeek != dryerDays.roundToInt()
+
+    // From Android 13 the app must ask before it can show the reminder notification.
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        // The alarm is scheduled either way; the notification appears only if allowed.
+        onSetReminder(true)
+    }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Dimens.ScreenPadding)) {
         Spacer(Modifier.height(14.dp))
@@ -60,8 +89,20 @@ fun GoalsScreen(onBack: () -> Unit) {
         )
         Spacer(Modifier.height(22.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            MetricTile("Energy goal", "342 kWh", "72% on track", Electric, Modifier.weight(1f))
-            MetricTile("Carbon goal", "−18%", "5 kg to go", Cyan, Modifier.weight(1f))
+            MetricTile(
+                label = "Daily target",
+                value = energyContext?.let { "${it.dailyTargetKwh} kWh" } ?: "Not set",
+                trend = energyContext?.let { "${(it.targetProgress * 100).toInt()}% used today" } ?: "Waiting for meter",
+                color = Electric,
+                modifier = Modifier.weight(1f),
+            )
+            MetricTile(
+                label = "Saved plan",
+                value = plan?.let { Formatters.formatCurrency(it.monthlySaving) } ?: "None",
+                trend = if (plan != null) "Estimated per month" else "Save a plan below",
+                color = Cyan,
+                modifier = Modifier.weight(1f),
+            )
         }
         Spacer(Modifier.height(26.dp))
         Text("LAUNDRY SCENARIO", style = MaterialTheme.typography.labelMedium, color = Electric)
@@ -74,7 +115,7 @@ fun GoalsScreen(onBack: () -> Unit) {
             onValueChange = { startHour = it },
             valueRange = ScenarioRules.EARLIEST_START_HOUR..ScenarioRules.LATEST_START_HOUR,
             steps = sliderSteps(ScenarioRules.EARLIEST_START_HOUR, ScenarioRules.LATEST_START_HOUR, step = 1f),
-            hint = "Later use may avoid peak pricing.",
+            hint = "The hour you start the washing. Peak pricing ends at 9 PM on a time-of-use tariff.",
         )
         Spacer(Modifier.height(18.dp))
         LabelledSlider(
@@ -84,6 +125,7 @@ fun GoalsScreen(onBack: () -> Unit) {
             onValueChange = { dryerDays = it },
             valueRange = ScenarioRules.MIN_DRYER_DAYS..ScenarioRules.MAX_DRYER_DAYS,
             steps = sliderSteps(ScenarioRules.MIN_DRYER_DAYS, ScenarioRules.MAX_DRYER_DAYS, step = 1f),
+            hint = "Days each week you use the tumble dryer. Line drying on the other days saves energy.",
         )
         Spacer(Modifier.height(22.dp))
         SurfaceCard {
@@ -100,44 +142,59 @@ fun GoalsScreen(onBack: () -> Unit) {
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                "Estimate based on your selected tariff and current household baseline. " +
-                    "Actual results may vary.",
+"Compared with washing at ${Formatters.formatHour(ScenarioRules.EARLIEST_START_HOUR.toInt())} and " +
+                    "using the dryer every day, on your ${tariff.lowercase()} tariff. A wash is counted as " +
+                    "${ScenarioRules.WASH_LOAD_KWH} kWh and a dryer load as ${ScenarioRules.DRYER_LOAD_KWH} kWh.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary,
             )
         }
         Spacer(Modifier.height(24.dp))
-        PrimaryAction(if (scenarioSaved) "Scenario saved" else "Save this scenario") {
-            scenarioSaved = true
+        PrimaryAction(if (hasUnsavedChanges) "Save this scenario" else "Scenario saved") {
+            onSavePlan(startHour.roundToInt(), dryerDays.roundToInt(), monthlySaving)
         }
-        if (scenarioSaved) {
+        if (plan != null) {
             Spacer(Modifier.height(12.dp))
             SavedPlanCard(
-                planSummary = "Laundry after $startTimeText · ${dryerDays.roundToInt()} days each week",
-                reminderScheduled = reminderScheduled,
-                onToggleReminder = { reminderScheduled = !reminderScheduled },
+                plan = plan,
+                onToggleReminder = {
+                    val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                    if (!plan.reminderEnabled && needsPermission) {
+                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        onSetReminder(!plan.reminderEnabled)
+                    }
+                },
+                onDelete = onDeletePlan,
             )
         }
         Spacer(Modifier.height(24.dp))
     }
 }
 
-/** Confirms the saved plan and lets the user add or remove its reminder. */
+/** Shows the plan saved in Room and lets the user add or remove its reminder, or delete the plan. */
 @Composable
-private fun SavedPlanCard(planSummary: String, reminderScheduled: Boolean, onToggleReminder: () -> Unit) {
-    val reminderText = if (reminderScheduled) {
-        "Reminder scheduled for ${ScenarioRules.REMINDER_LEAD_MINUTES} minutes before the planned start."
+private fun SavedPlanCard(plan: ScenarioPlan, onToggleReminder: () -> Unit, onDelete: () -> Unit) {
+    val reminderText = if (plan.reminderEnabled) {
+        "Daily reminder set for ${ScenarioRules.REMINDER_LEAD_MINUTES} minutes before the planned start."
     } else {
-        "Add a reminder so the recommendation becomes an actionable routine."
+        "Add a reminder so the plan becomes part of your routine."
     }
     SurfaceCard {
-        Text("PLAN READY", style = MaterialTheme.typography.labelMedium, color = StatusGood)
+        Text("SAVED PLAN", style = MaterialTheme.typography.labelMedium, color = StatusGood)
         Spacer(Modifier.height(5.dp))
-        Text(planSummary, style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Laundry after ${Formatters.formatHour(plan.startHour)} · dryer ${plan.dryerDaysPerWeek} days each week",
+            style = MaterialTheme.typography.titleMedium,
+        )
         Text(reminderText, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         Spacer(Modifier.height(8.dp))
-        TextButton(onClick = onToggleReminder) {
-            Text(if (reminderScheduled) "REMOVE REMINDER" else "SCHEDULE REMINDER", color = Electric)
+        Row {
+            TextButton(onClick = onToggleReminder) {
+                Text(if (plan.reminderEnabled) "REMOVE REMINDER" else "SCHEDULE REMINDER", color = Electric)
+            }
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = onDelete) { Text("DELETE PLAN", color = TextSecondary) }
         }
     }
 }

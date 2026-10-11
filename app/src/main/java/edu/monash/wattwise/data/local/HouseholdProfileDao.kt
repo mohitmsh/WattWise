@@ -15,6 +15,10 @@ interface HouseholdProfileDao {
     @Query("SELECT * FROM household_profile WHERE id = :id")
     fun getProfile(id: Int = HouseholdProfile.SINGLE_PROFILE_ID): Flow<HouseholdProfile?>
 
+    /** Reads the profile once, for code that runs outside the UI such as the background worker. */
+    @Query("SELECT * FROM household_profile WHERE id = :id")
+    suspend fun getProfileOnce(id: Int = HouseholdProfile.SINGLE_PROFILE_ID): HouseholdProfile?
+
     /** Inserts the profile, or replaces the existing row because the id is the same. */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveProfile(profile: HouseholdProfile)
