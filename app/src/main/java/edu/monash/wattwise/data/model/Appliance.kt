@@ -8,6 +8,8 @@ import androidx.room.PrimaryKey
 data class Appliance(
     // 0 tells Room to generate the next id when the row is inserted.
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    /** The Firebase id of the user who added this appliance. */
+    val userId: String,
     val name: String,
     val category: ApplianceCategory,
     val watts: Int,
@@ -27,6 +29,8 @@ data class Appliance(
  */
 enum class ApplianceCategory(val label: String, val isFlexible: Boolean) {
     KITCHEN("Kitchen", true),
+    // A fridge or freezer runs all day, so it cannot be moved to a cheaper time.
+    REFRIGERATION("Fridge and freezer", false),
     COOLING("Cooling", false),
     HEATING("Heating", false),
     LAUNDRY("Laundry", true),

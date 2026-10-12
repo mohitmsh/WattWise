@@ -22,6 +22,7 @@ interface HourlyUsageDao {
     @Query("SELECT SUM(kwh) FROM hourly_usage WHERE dayStartMillis = :dayStartMillis")
     suspend fun getTotalForDay(dayStartMillis: Long): Double?
 
+    /** Adds the hours that the background worker has just calculated. */
     @Insert
     suspend fun insertAll(usage: List<HourlyUsage>)
 }

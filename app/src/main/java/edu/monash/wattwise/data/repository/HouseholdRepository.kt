@@ -10,9 +10,12 @@ class HouseholdRepository(context: Context) {
 
     private val householdProfileDao = WattWiseDatabase.getDatabase(context).householdProfileDao()
 
-    val profile: Flow<HouseholdProfile?> = householdProfileDao.getProfile()
+    /** The user's household as a Flow; it emits null until the setup form is saved. */
+    fun getProfile(userId: String): Flow<HouseholdProfile?> = householdProfileDao.getProfile(userId)
 
-    suspend fun getProfileOnce(): HouseholdProfile? = householdProfileDao.getProfileOnce()
+    /** Reads the household one time, for code that does not need updates. */
+    suspend fun getProfileOnce(userId: String): HouseholdProfile? = householdProfileDao.getProfileOnce(userId)
 
+    /** Saves the household and replaces the user's earlier row. */
     suspend fun save(profile: HouseholdProfile) = householdProfileDao.saveProfile(profile)
 }

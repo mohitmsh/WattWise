@@ -2,20 +2,24 @@ package edu.monash.wattwise.data.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import edu.monash.wattwise.constants.BillRules
 import edu.monash.wattwise.constants.WeatherApi
 
 /**
- * The household details entered in the setup form. The app keeps a single
- * profile, so every save uses the same id and replaces the previous row.
+ * The household details entered in the setup form. Each signed-in user has one
+ * profile, so the user's id is the primary key and a save replaces their row.
  */
 @Entity(tableName = "household_profile")
 data class HouseholdProfile(
-    @PrimaryKey val id: Int = SINGLE_PROFILE_ID,
+    /** The Firebase id of the user this household belongs to. */
+    @PrimaryKey val userId: String,
     val homeType: String,
     val tariff: String,
     val occupants: Int,
     val dailyTargetKwh: Int,
     val billingStartDateMillis: Long,
+    /** The most the household wants to pay for one billing period, in dollars. */
+    val monthlyBudget: Int = BillRules.DEFAULT_BUDGET,
     /** True for renters, who get advice about habits only; owners also get upgrade advice. */
     val isRenting: Boolean = true,
     /** When true, a notification is shown on the day usage passes the daily target. */
@@ -26,8 +30,4 @@ data class HouseholdProfile(
     val locationName: String = WeatherApi.DEFAULT_LOCATION_NAME,
     val latitude: Double = WeatherApi.DEFAULT_LATITUDE,
     val longitude: Double = WeatherApi.DEFAULT_LONGITUDE,
-) {
-    companion object {
-        const val SINGLE_PROFILE_ID = 1
-    }
-}
+)
