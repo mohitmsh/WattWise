@@ -151,7 +151,8 @@ object ContextRules {
         }
 
         // Rule 5: today's energy has passed the daily target from the household form.
-        if (context.dailyTargetKwh > 0 && context.todayKwh > context.dailyTargetKwh) {
+        val overTarget = context.dailyTargetKwh > 0 && context.todayKwh > context.dailyTargetKwh
+        if (overTarget) {
             recommendations.add(
                 Recommendation(
                     ruleName = "Daily target",
@@ -160,7 +161,7 @@ object ContextRules {
                         "Household details if it no longer fits your home.",
                     reason = "You have used ${Formatters.formatKwh(context.todayKwh)} kWh today and your " +
                         "target is ${context.dailyTargetKwh} kWh.",
-                    saving = "${(context.targetProgress * 100).toInt()}% of target",
+                    saving = "${Formatters.toPercent(context.targetProgress)}% of target",
                     isWarning = true,
                     visual = comparison(
                         label = "Used today",
@@ -174,7 +175,9 @@ object ContextRules {
         }
 
         // Rule 6: nothing flexible is running and electricity is cheap, so suggest using it now.
-        if (flexibleAppliance == null && (period == TariffPeriod.OFF_PEAK || period == TariffPeriod.SOLAR)) {
+        // Skipped once the daily target is passed, because rule 5 has already advised waiting.
+        val cheapPeriod = period == TariffPeriod.OFF_PEAK || period == TariffPeriod.SOLAR
+        if (flexibleAppliance == null && cheapPeriod && !overTarget) {
             recommendations.add(
                 Recommendation(
                     ruleName = "Cheap-period window",
@@ -286,6 +289,7 @@ object ContextRules {
     private fun forOwnership(context: EnergyContext, renter: String, owner: String): String =
         if (context.isRenting) renter else owner
 
+    /** "rent your home" or "own your home", for the reason shown with the advice. */
     private fun ownershipText(context: EnergyContext): String =
         if (context.isRenting) "rent your home" else "own your home"
 }

@@ -4,6 +4,7 @@ import edu.monash.wattwise.constants.FormatRules
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /** Converts raw values into the text shown on screen. */
 object Formatters {
@@ -22,8 +23,10 @@ object Formatters {
     fun formatCurrency(amount: Double): String =
         String.format(Locale.getDefault(), "$%.2f", amount)
 
+    /** Formats a daily cost, for example "$0.42 a day". */
     fun formatDailyCost(dailyCost: Double): String = "${formatCurrency(dailyCost)} a day"
 
+    /** Formats the cost of 30 days from a daily cost, for example "$12.48". */
     fun formatMonthlyCost(dailyCost: Double): String =
         formatCurrency(dailyCost * FormatRules.DAYS_PER_MONTH)
 
@@ -36,6 +39,16 @@ object Formatters {
         hour < 12 -> "$hour AM"
         hour == 12 -> "12 PM"
         else -> "${hour - 12} PM"
+    }
+
+    /**
+     * The clock time [leadMinutes] before [startHour], for example "8:45 PM"
+     * for a 9 PM start with a 15 minute lead. This is when the reminder arrives.
+     */
+    fun formatReminderTime(startHour: Int, leadMinutes: Int): String {
+        val reminderHour = (startHour + FormatRules.HOURS_PER_DAY - 1) % FormatRules.HOURS_PER_DAY
+        val minutes = FormatRules.MINUTES_PER_HOUR - leadMinutes
+        return formatClockHour(reminderHour).replace(" ", ":%02d ".format(minutes))
     }
 
     /** Formats power with two decimal places, for example "2.84". */
@@ -59,4 +72,14 @@ object Formatters {
     /** Short date for the report's date range, for example "05 OCT". */
     fun formatShortDate(millis: Long): String =
         SimpleDateFormat(FormatRules.SHORT_DATE_PATTERN, Locale.getDefault()).format(Date(millis)).uppercase()
+
+    /** A count with its noun, adding an "s" unless the count is one: "1 day", "3 days". */
+    fun formatCount(count: Int, singular: String): String =
+        if (count == 1) "1 $singular" else "$count ${singular}s"
+
+    /** A fraction as a whole percentage, rounded to the nearest number: 0.268 becomes 27. */
+    fun toPercent(fraction: Double): Int = (fraction * FormatRules.PERCENT).roundToInt()
+
+    /** The same as [toPercent] for a Float fraction. */
+    fun toPercent(fraction: Float): Int = toPercent(fraction.toDouble())
 }

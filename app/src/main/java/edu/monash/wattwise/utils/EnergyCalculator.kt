@@ -14,6 +14,7 @@ import edu.monash.wattwise.data.model.MeterReading
 /** Turns meter readings and saved hourly usage into the figures the screens show. */
 object EnergyCalculator {
 
+    /** Converts power from watts to kilowatts. */
     fun wattsToKilowatts(watts: Int): Double = watts / EnergyUnits.WATTS_PER_KILOWATT
 
     /** Energy in kWh an appliance uses on a normal day: its power multiplied by its hours of use. */
@@ -56,6 +57,26 @@ object EnergyCalculator {
     fun totalForDay(usage: List<HourlyUsage>, dayStartMillis: Long): Double =
         usage.filter { it.dayStartMillis == dayStartMillis }.sumOf { it.kwh }
 
+    /**
+     * The saved usage with one extra row for the energy used today that is not
+     * in Room yet. Room holds finished hours only, so without this row the
+     * report would show less for today than the live figure on Home.
+     *
+     * @param todayKwh energy used so far today, from the live meter readings.
+     */
+    fun withLiveHour(
+        usage: List<HourlyUsage>,
+        todayKwh: Double,
+        nowMillis: Long = System.currentTimeMillis(),
+    ): List<HourlyUsage> {
+        val todayStart = DateUtils.startOfDay(nowMillis)
+        val currentHour = DateUtils.hourOfDay(nowMillis)
+        val savedToday = usage.filter { it.dayStartMillis == todayStart }
+        val notSavedYet = todayKwh - savedToday.sumOf { it.kwh }
+        if (notSavedYet <= 0.0 || savedToday.any { it.hour == currentHour }) return usage
+        return usage + HourlyUsage(dayStartMillis = todayStart, hour = currentHour, kwh = notSavedYet)
+    }
+
     /** The 24 hourly kWh values for one day; hours with nothing saved are zero. */
     fun hourlyForDay(usage: List<HourlyUsage>, dayStartMillis: Long): List<Float> {
         val hours = MutableList(EnergyUnits.HOURS_PER_DAY) { 0f }
@@ -85,7 +106,7 @@ object EnergyCalculator {
 
     /** Percentage that [actual] is above (positive) or below (negative) [typical]. */
     fun percentDifference(actual: Double, typical: Double): Int =
-        if (typical <= 0.0) 0 else ((actual - typical) / typical * 100).toInt()
+        if (typical <= 0.0) 0 else Formatters.toPercent((actual - typical) / typical)
 
     /**
      * Finds the periods today when each appliance was switched on, newest first.

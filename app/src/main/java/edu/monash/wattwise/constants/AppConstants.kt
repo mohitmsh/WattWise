@@ -5,7 +5,9 @@ import edu.monash.wattwise.data.model.MapPlace
 /** Rules shared by the login and registration forms. */
 object ValidationRules {
     const val MIN_PASSWORD_LENGTH = 8
-    const val EMAIL_REQUIRED_SYMBOL = "@"
+    /** Longest name accepted for a person or an appliance. */
+    const val MAX_NAME_LENGTH = 30
+    const val PASSWORD_HINT = "At least $MIN_PASSWORD_LENGTH characters, with a letter and a number"
 }
 
 /** Options and slider limits for the household setup form. */
@@ -26,7 +28,7 @@ object HouseholdOptions {
     const val MIN_DAILY_TARGET_KWH = 8f
     const val MAX_DAILY_TARGET_KWH = 30f
     const val DEFAULT_DAILY_TARGET_KWH = 15f
-    const val DAILY_TARGET_STEP_KWH = 2f
+    const val DAILY_TARGET_STEP_KWH = 1f
 }
 
 /** Slider limits for the appliance power rating. */
@@ -48,24 +50,18 @@ object ApplianceLimits {
     const val HIGH_USE_TARGET_SHARE = 0.25
 }
 
-/** Inputs and weights used by the laundry scenario planner. */
-object ScenarioRules {
-    const val EARLIEST_START_HOUR = 18f
-    const val LATEST_START_HOUR = 23f
-    const val MIN_DRYER_DAYS = 1f
-    const val MAX_DRYER_DAYS = 7f
-    const val DEFAULT_DRYER_DAYS = 4f
-
-    /** Energy one washing machine load uses, a typical figure for a warm wash. */
-    const val WASH_LOAD_KWH = 1.0
-
-    /** Energy one tumble dryer load uses, a typical figure for a vented dryer. */
-    const val DRYER_LOAD_KWH = 2.5
-
-    const val DAYS_PER_WEEK = 7
-    const val WEEKS_PER_MONTH = 4.33
-
-    const val REMINDER_LEAD_MINUTES = 15
+/** Settings for the bill forecast and the monthly budget slider. */
+object BillRules {
+    /** Length of one billing period in days. */
+    const val PERIOD_DAYS = 30
+    /** Fixed charge for being connected to the grid, in dollars for each day. */
+    const val DAILY_SUPPLY_CHARGE = 1.10
+    /** Number of cheapest and most expensive days used for the low and high estimates. */
+    const val RANGE_DAYS = 7
+    const val MIN_BUDGET = 60f
+    const val MAX_BUDGET = 300f
+    const val BUDGET_STEP = 10f
+    const val DEFAULT_BUDGET = 150
 }
 
 /** Patterns and conversion factors used by the formatting helpers. */
@@ -76,6 +72,9 @@ object FormatRules {
     const val SHORT_DATE_PATTERN = "dd MMM"
     const val DAY_OF_MONTH_PATTERN = "d"
     const val DAYS_PER_MONTH = 30
+    const val PERCENT = 100
+    const val HOURS_PER_DAY = 24
+    const val MINUTES_PER_HOUR = 60
 }
 
 /** Settings for the Open-Meteo weather API call. */
@@ -206,7 +205,7 @@ object BackgroundWork {
     const val REPEAT_INTERVAL_MINUTES = 15L
 }
 
-/** Settings for the app's notifications and the laundry reminder scheduled with AlarmManager. */
+/** Settings for the app's notifications and the appliance reminder scheduled with AlarmManager. */
 object Reminders {
     const val CHANNEL_ID = "energy_notifications"
     const val CHANNEL_NAME = "Reminders and usage alerts"
@@ -214,7 +213,22 @@ object Reminders {
     const val TARGET_ALERT_NOTIFICATION_ID = 1002
     const val ALARM_REQUEST_CODE = 2001
     const val EXTRA_START_HOUR = "start_hour"
+    const val EXTRA_APPLIANCE = "appliance"
+    /** The reminder arrives this many minutes before the planned start. */
+    const val LEAD_MINUTES = 15
+    /** Start hour used if an alarm arrives without one; the end of the peak period. */
+    const val DEFAULT_START_HOUR = 21
     const val MINUTES_PER_HOUR = 60
+}
+
+/** Settings for the cloud backup of the household in Firestore. */
+object CloudBackup {
+    /** One document for each user, named with the user's Firebase id. */
+    const val USERS_COLLECTION = "users"
+    const val FIELD_HOUSEHOLD = "household"
+    const val FIELD_APPLIANCES = "appliances"
+    const val FIELD_REMINDER = "reminder"
+    const val FIELD_UPDATED_AT = "updatedAt"
 }
 
 /** Settings for the home location map. */
@@ -234,6 +248,10 @@ object MapSettings {
     const val MARKER_WIDTH_DP = 54
     const val MARKER_HEIGHT_DP = 26
     const val CUSTOM_PLACE_NAME = "Chosen location"
+    /** Name given to the point found from the device's own location. */
+    const val MY_LOCATION_NAME = "My location"
+    /** Zoom used when the map moves to the device's location; close enough to see the suburb. */
+    const val MY_LOCATION_ZOOM = 10.0
 
     /** Places shown as markers so the user can pick a nearby town with one tap. */
     val PLACES = listOf(

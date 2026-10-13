@@ -1,6 +1,7 @@
 package edu.monash.wattwise.utils
 
 import java.util.Calendar
+import java.util.TimeZone
 
 /** Date arithmetic used by the usage history and the report. */
 object DateUtils {
@@ -30,4 +31,30 @@ object DateUtils {
         calendar.add(Calendar.DAY_OF_YEAR, days)
         return calendar.timeInMillis
     }
+
+    /**
+     * The Material date picker stores a date as midnight in UTC, but the app
+     * stores midnight in the phone's own time zone. This converts the app's
+     * value so the picker highlights the same calendar date.
+     */
+    fun localDayToPickerMillis(millis: Long): Long {
+        val local = Calendar.getInstance()
+        local.timeInMillis = millis
+        val utc = Calendar.getInstance(TimeZone.getTimeZone(UTC))
+        utc.clear()
+        utc.set(local.get(Calendar.YEAR), local.get(Calendar.MONTH), local.get(Calendar.DAY_OF_MONTH))
+        return utc.timeInMillis
+    }
+
+    /** The opposite of [localDayToPickerMillis]: the picker's UTC date as local midnight. */
+    fun pickerMillisToLocalDay(pickerMillis: Long): Long {
+        val utc = Calendar.getInstance(TimeZone.getTimeZone(UTC))
+        utc.timeInMillis = pickerMillis
+        val local = Calendar.getInstance()
+        local.clear()
+        local.set(utc.get(Calendar.YEAR), utc.get(Calendar.MONTH), utc.get(Calendar.DAY_OF_MONTH))
+        return local.timeInMillis
+    }
+
+    private const val UTC = "UTC"
 }

@@ -57,24 +57,46 @@ object TrendCalculator {
     fun isCompleteDay(dayUsage: List<HourlyUsage>?): Boolean = dayUsage?.size == EnergyUnits.HOURS_PER_DAY
 
     /**
-     * The household's usual energy for the weekday of [day]: the average total
-     * of the other complete days in the history that fall on the same weekday.
+     * The household's usual value of [metric] for the weekday of [day]: the
+     * average over the other complete days in the history that fall on the same weekday.
      */
-    fun typicalForWeekday(usageByDay: Map<Long, List<HourlyUsage>>, day: Long): Double {
+    fun typicalForWeekday(
+        usageByDay: Map<Long, List<HourlyUsage>>,
+        day: Long,
+        metric: TrendMetric,
+        tariff: String,
+    ): Double {
         val weekday = weekdayOf(day)
-        val sameWeekdayTotals = usageByDay
+        val sameWeekdayValues = usageByDay
             .filter { (otherDay, hours) -> otherDay != day && weekdayOf(otherDay) == weekday && isCompleteDay(hours) }
-            .map { (_, hours) -> hours.sumOf { it.kwh } }
-        return if (sameWeekdayTotals.isEmpty()) 0.0 else sameWeekdayTotals.sum() / sameWeekdayTotals.size
+            .map { (_, hours) -> dailyValue(hours, metric, tariff) }
+        return average(sameWeekdayValues)
     }
 
-    /** Energy in kWh for each part of the day, in the order night, morning, afternoon, evening. */
-    fun dayPartTotals(usage: List<HourlyUsage>): List<Pair<String, Double>> = listOf(
+    /**
+     * The household's usual value for each hour of the day, averaged over every
+     * saved day: cost in dollars for the cost metric, otherwise kWh.
+     */
+    fun typicalHourlyValues(usageByDay: Map<Long, List<HourlyUsage>>, metric: TrendMetric, tariff: String): List<Float> {
+        val dailyHours = usageByDay.values.map { hourlyValues(it, metric, tariff) }
+        return (0 until EnergyUnits.HOURS_PER_DAY).map { hour ->
+            if (dailyHours.isEmpty()) 0f else dailyHours.map { it[hour] }.average().toFloat()
+        }
+    }
+
+    /**
+     * The total for each part of the day, in the order night, morning, afternoon,
+     * evening: cost in dollars for the cost metric, otherwise energy in kWh.
+     */
+    fun dayPartTotals(usage: List<HourlyUsage>, metric: TrendMetric, tariff: String): List<Pair<String, Double>> = listOf(
         "Night" to (0 until 6),
         "Morning" to (6 until 12),
         "Afternoon" to (12 until 18),
         "Evening" to (18 until 24),
-    ).map { (name, hours) -> name to usage.filter { it.hour in hours }.sumOf { it.kwh } }
+    ).map { (name, hours) ->
+        val partUsage = usage.filter { it.hour in hours }
+        name to if (metric == TrendMetric.COST) TariffCalculator.cost(partUsage, tariff) else partUsage.sumOf { it.kwh }
+    }
 
     /** Peak hours are fixed, so peak-period energy can be compared whatever the tariff is. */
     fun isPeakHour(hour: Int): Boolean = hour in TariffRules.PEAK_START_HOUR until TariffRules.PEAK_END_HOUR
@@ -84,6 +106,7 @@ object TrendCalculator {
         usage.groupBy { TariffCalculator.periodFor(tariff, it.hour) }
             .mapValues { (_, hours) -> hours.sumOf { it.kwh } }
 
+    /** The day of the week for [day], as the Calendar number from 1 (Sunday) to 7 (Saturday). */
     private fun weekdayOf(day: Long): Int {
         val calendar = Calendar.getInstance()
         calendar.timeInMillis = day
