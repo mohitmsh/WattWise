@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Background of the launcher icon; the same dark colour as the app's dark theme. -->
+    <color name="launcher_background">#101518</color>
+</resources>

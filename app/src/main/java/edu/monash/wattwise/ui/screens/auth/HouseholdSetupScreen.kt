@@ -20,7 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,28 +42,31 @@ import kotlin.math.roundToInt
  * Form that collects the household details recommendations are based on.
  * [existing] fills the form with the saved profile, and [isEditing] switches
  * the wording from first-time setup to updating details from the profile screen.
+ *
+ * @param userId the signed-in user the saved household belongs to.
  */
 @Composable
 fun HouseholdSetupScreen(
+    userId: String,
     onSave: (HouseholdProfile) -> Unit,
     onCancel: () -> Unit,
     existing: HouseholdProfile? = null,
     isEditing: Boolean = false,
 ) {
-    var homeType by remember(existing) {
+    var homeType by rememberSaveable(existing?.userId) {
         mutableStateOf(existing?.homeType ?: HouseholdOptions.HOME_TYPES.first())
     }
-    var tariff by remember(existing) {
+    var tariff by rememberSaveable(existing?.userId) {
         mutableStateOf(existing?.tariff ?: HouseholdOptions.TARIFFS[HouseholdOptions.DEFAULT_TARIFF_INDEX])
     }
-    var occupants by remember(existing) {
+    var occupants by rememberSaveable(existing?.userId) {
         mutableFloatStateOf(existing?.occupants?.toFloat() ?: HouseholdOptions.DEFAULT_OCCUPANTS)
     }
-    var dailyTargetKwh by remember(existing) {
+    var dailyTargetKwh by rememberSaveable(existing?.userId) {
         mutableFloatStateOf(existing?.dailyTargetKwh?.toFloat() ?: HouseholdOptions.DEFAULT_DAILY_TARGET_KWH)
     }
-    var isRenting by remember(existing) { mutableStateOf(existing?.isRenting ?: true) }
-    var billingStartDateMillis by remember(existing) {
+    var isRenting by rememberSaveable(existing?.userId) { mutableStateOf(existing?.isRenting ?: true) }
+    var billingStartDateMillis by rememberSaveable(existing?.userId) {
         mutableLongStateOf(existing?.billingStartDateMillis ?: System.currentTimeMillis())
     }
 
@@ -122,7 +125,7 @@ fun HouseholdSetupScreen(
         Spacer(Modifier.height(16.dp))
         LabelledSlider(
             label = "Occupants",
-            valueText = "${occupants.roundToInt()} people",
+            valueText = if (occupants.roundToInt() == 1) "1 person" else "${occupants.roundToInt()} people",
             value = occupants,
             onValueChange = { occupants = it },
             valueRange = HouseholdOptions.MIN_OCCUPANTS..HouseholdOptions.MAX_OCCUPANTS,
@@ -149,6 +152,7 @@ fun HouseholdSetupScreen(
             onSave(
                 // The home location is chosen on the map, so keep the saved one when editing.
                 HouseholdProfile(
+                    userId = userId,
                     homeType = homeType,
                     tariff = tariff,
                     occupants = occupants.roundToInt(),

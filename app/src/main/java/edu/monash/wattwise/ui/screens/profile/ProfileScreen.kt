@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
 import edu.monash.wattwise.data.model.HouseholdProfile
 import edu.monash.wattwise.ui.components.LabelledSwitch
@@ -43,7 +44,7 @@ fun ProfileScreen(
     onUsageAlertsChange: (Boolean) -> Unit,
     onHomeLocation: () -> Unit,
     onAppliances: () -> Unit,
-    onGoals: () -> Unit,
+    onBill: () -> Unit,
     userName: String?,
     userEmail: String?,
     onLogout: () -> Unit,
@@ -76,11 +77,11 @@ fun ProfileScreen(
             detail = profile?.let { "${it.locationName} · used for weather advice" } ?: "Melbourne (default)",
             onClick = onHomeLocation,
         )
-        SettingsLink("APPLIANCES", "$applianceCount saved profiles", onAppliances)
+        SettingsLink("APPLIANCES", "${Formatters.formatCount(applianceCount, "saved profile")}", onAppliances)
         SettingsLink(
-            title = "ENERGY GOALS",
-            detail = profile?.let { "${it.dailyTargetKwh} kWh daily target" } ?: "No daily target yet",
-            onClick = onGoals,
+            title = "BILL FORECAST & BUDGET",
+            detail = profile?.let { "$${it.monthlyBudget} budget for each billing period" } ?: "No budget yet",
+            onClick = onBill,
         )
         Spacer(Modifier.height(22.dp))
         Text("PREFERENCES", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
@@ -103,7 +104,8 @@ fun ProfileScreen(
             Spacer(Modifier.height(8.dp))
             Text(
                 "Every recommendation shows the readings and settings that produced it. Meter readings " +
-                    "are simulated from the public REFIT dataset, and your data stays on this device.",
+                    "are simulated from the public REFIT dataset. Your household and appliances are saved on this device " +
+                    "and backed up to your account, so they return if you install the app again.",
                 color = TextSecondary,
             )
         }
@@ -124,6 +126,8 @@ private fun SettingsLink(title: String, detail: String, onClick: () -> Unit) {
     TextButton(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
+        // A square shape: the button's default rounded corners cut into the first letter of the title.
+        shape = RectangleShape,
         contentPadding = PaddingValues(vertical = 14.dp),
     ) {
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {

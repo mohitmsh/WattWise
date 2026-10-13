@@ -1,12 +1,16 @@
 package edu.monash.wattwise.ui.theme
 
+import android.app.Activity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 /** Builds the Material colour scheme from the app's colours for the chosen theme. */
 private fun wattWiseColors() = if (ThemeSettings.isLight) {
@@ -43,8 +47,19 @@ private fun wattWiseColors() = if (ThemeSettings.isLight) {
     )
 }
 
+/** Applies the WattWise colours and typography to [content] for the theme the user selected. */
 @Composable
 fun WattWiseTheme(content: @Composable () -> Unit) {
+    // Dark status bar icons on the light theme and light icons on the dark theme, so the
+    // clock and battery stay readable against the app's background.
+    val view = LocalView.current
+    val isLight = ThemeSettings.isLight
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = isLight
+        }
+    }
     MaterialTheme(
         colorScheme = wattWiseColors(),
         typography = WattWiseTypography,
