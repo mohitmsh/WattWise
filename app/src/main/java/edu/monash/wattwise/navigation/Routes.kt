@@ -18,7 +18,7 @@ object Routes {
     const val ADD_APPLIANCE = "add_appliance"
     const val EDIT_APPLIANCE = "edit_appliance"
     const val APPLIANCE_DETAIL = "appliance_detail"
-    const val GOALS = "goals"
+    const val BILL = "bill"
     const val EFFICIENCY = "efficiency"
     const val MAP = "map"
 }
