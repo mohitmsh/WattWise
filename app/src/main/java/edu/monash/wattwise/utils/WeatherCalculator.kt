@@ -1,5 +1,6 @@
 package edu.monash.wattwise.utils
 
+import edu.monash.wattwise.constants.EnergyUnits
 import edu.monash.wattwise.constants.TariffRules
 import edu.monash.wattwise.constants.WeatherEnergyRules
 import edu.monash.wattwise.data.remote.WeatherResponse
@@ -72,4 +73,35 @@ object WeatherCalculator {
             else -> "Any time: your flat rate is the same all day"
         }
     }
+
+    /**
+     * The hour of the day that is cheapest to start a flexible appliance, from
+     * the household's tariff and the sunlight forecast:
+     * - solar tariff with good sun: the sunniest hour, when the panels cover the load;
+     * - time of use: the hour the peak price ends;
+     * - flat rate: the sunniest hour, because the price is the same all day.
+     */
+    fun recommendedStartHour(tariff: String, weather: WeatherResponse): Int = when {
+        tariff == TariffRules.TIME_OF_USE -> TariffRules.PEAK_END_HOUR
+        else -> peakSolarHour(weather)
+    }
+
+    /** One sentence that explains [recommendedStartHour] to the user. */
+    fun recommendedStartReason(tariff: String, weather: WeatherResponse): String = when {
+        tariff == TariffRules.TIME_OF_USE ->
+            "Peak pricing ends at ${Formatters.formatClockHour(TariffRules.PEAK_END_HOUR)} on your time of use tariff."
+        tariff == TariffRules.SOLAR_FEED_IN && goodSolarHours(weather) != null ->
+            "The forecast shows the strongest sun then, so your solar panels cover most of the load."
+        tariff == TariffRules.SOLAR_FEED_IN ->
+            "Little sun is forecast today. This is the brightest hour, but the saving will be small."
+        else ->
+            "Your flat rate is the same all day, so this is the sunniest hour, when washing can dry outside."
+    }
+
+    /** The highest price in dollars per kWh at any hour of the day on [tariff]. */
+    fun highestRate(tariff: String): Double =
+        (0 until EnergyUnits.HOURS_PER_DAY).maxOf { hour -> TariffCalculator.ratePerKwh(TariffCalculator.periodFor(tariff, hour)) }
+
+    /** The price in dollars per kWh at [hour] on [tariff]. */
+    fun rateAt(tariff: String, hour: Int): Double = TariffCalculator.ratePerKwh(TariffCalculator.periodFor(tariff, hour))
 }
