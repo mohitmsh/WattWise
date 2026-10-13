@@ -10,6 +10,7 @@ import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.auth.FirebaseUser
+import edu.monash.wattwise.constants.ValidationRules
 import edu.monash.wattwise.data.repository.AuthRepository
 
 /**
@@ -36,6 +37,7 @@ class AuthViewModel : ViewModel() {
     var infoMessage by mutableStateOf<String?>(null)
         private set
 
+    /** Signs in with an email address and a password, then calls [onSuccess]. */
     fun signIn(email: String, password: String, onSuccess: () -> Unit) {
         startRequest()
         repository.signIn(email.trim(), password)
@@ -56,9 +58,10 @@ class AuthViewModel : ViewModel() {
                     repository.setDisplayName(user, name.trim()).addOnCompleteListener { finishSignedIn(onSuccess) }
                 }
             }
-            .addOnFailureListener { error -> fail(error) }
+            .addOnFailureListener { error -> fail(error, signingUp = true) }
     }
 
+    /** Signs in to Firebase with the ID token that Google returned, then calls [onSuccess]. */
     fun signInWithGoogle(idToken: String, onSuccess: () -> Unit) {
         startRequest()
         repository.signInWithGoogle(idToken)
@@ -66,6 +69,7 @@ class AuthViewModel : ViewModel() {
             .addOnFailureListener { error -> fail(error) }
     }
 
+    /** Asks Firebase to send a reset link and shows a confirmation under the form. */
     fun sendPasswordReset(email: String) {
         startRequest()
         repository.sendPasswordReset(email.trim())
@@ -77,6 +81,7 @@ class AuthViewModel : ViewModel() {
             .addOnFailureListener { error -> fail(error) }
     }
 
+    /** Signs the user out and clears any message on the screen. */
     fun signOut() {
         repository.signOut()
         currentUser = null
@@ -87,19 +92,23 @@ class AuthViewModel : ViewModel() {
     /** Shows a message that did not come from Firebase, such as a cancelled Google sign-in. */
     fun showError(message: String) {
         isLoading = false
+        infoMessage = null
         errorMessage = message
     }
 
+    /** Removes the error and confirmation messages, for example when the user opens a different form. */
     fun clearMessages() {
         errorMessage = null
         infoMessage = null
     }
 
+    /** Marks a request as started: shows the loading state and clears old messages. */
     private fun startRequest() {
         isLoading = true
         clearMessages()
     }
 
+    /** Marks a request as finished, stores the signed-in user and continues to the next screen. */
     private fun finishSignedIn(onSuccess: () -> Unit) {
         isLoading = false
         currentUser = repository.currentUser
@@ -108,14 +117,18 @@ class AuthViewModel : ViewModel() {
     }
 
     /** Turns a Firebase error into a message the user can act on. */
-    private fun fail(error: Exception) {
+    private fun fail(error: Exception, signingUp: Boolean = false) {
         isLoading = false
         Log.e(TAG, "Authentication failed", error)
         errorMessage = when (error) {
-            is FirebaseAuthWeakPasswordException -> "Choose a stronger password with at least 8 characters."
-            is FirebaseAuthInvalidCredentialsException -> "The email or password is not correct."
+            is FirebaseAuthWeakPasswordException -> "Choose a stronger password. ${ValidationRules.PASSWORD_HINT}."
+            // When signing up there is no password to get wrong, so Firebase is rejecting the address.
+            is FirebaseAuthInvalidCredentialsException ->
+                if (signingUp) "This email address is not valid. Check it and try again."
+                else "The email or password is not correct."
             is FirebaseAuthInvalidUserException -> "No account was found for this email."
-            is FirebaseAuthUserCollisionException -> "An account already exists for this email. Sign in instead."
+            is FirebaseAuthUserCollisionException -> "An account already exists for this email. Sign in instead, or use Continue with Google " +
+                    "if you signed up with Google."
             else -> "Could not reach the sign-in service. Check your internet connection and try again."
         }
     }

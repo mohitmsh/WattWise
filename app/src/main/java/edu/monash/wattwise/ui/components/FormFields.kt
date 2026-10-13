@@ -3,11 +3,16 @@ package edu.monash.wattwise.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -25,10 +30,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -38,16 +45,24 @@ import edu.monash.wattwise.ui.theme.Electric
 import edu.monash.wattwise.ui.theme.TextPrimary
 import edu.monash.wattwise.ui.theme.TextSecondary
 
-/** Full-width button for the main action on a screen. */
+/**
+ * Full-width button for the main action on a screen. While [isLoading] is
+ * true it shows a progress indicator and cannot be tapped a second time.
+ */
 @Composable
-fun PrimaryAction(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun PrimaryAction(text: String, modifier: Modifier = Modifier, isLoading: Boolean = false, onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
+        enabled = !isLoading,
         modifier = modifier.fillMaxWidth().height(Dimens.PrimaryButtonHeight),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
         border = BorderStroke(1.dp, Electric),
         shape = RoundedCornerShape(Dimens.PILL_CORNER_PERCENT),
     ) {
+        if (isLoading) {
+            CircularProgressIndicator(Modifier.size(18.dp), color = Electric, strokeWidth = 2.dp)
+            Spacer(Modifier.width(10.dp))
+        }
         Text(text.uppercase(), style = MaterialTheme.typography.labelLarge)
     }
 }
@@ -65,7 +80,7 @@ fun PasswordField(
     isError: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    var passwordVisible by remember { mutableStateOf(false) }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -79,7 +94,7 @@ fun PasswordField(
         },
         modifier = modifier.fillMaxWidth(),
         isError = isError,
-        supportingText = { Text(hint) },
+        supportingText = { if (hint.isNotEmpty()) Text(hint) },
     )
 }
 
@@ -153,14 +168,24 @@ fun LabelledSlider(
     }
 }
 
-/** Setting row with a title, a short explanation and an on/off switch. */
+/**
+ * Setting row with a title, a short explanation and an on/off switch. The
+ * whole row can be tapped, and a screen reader announces it as one switch.
+ */
 @Composable
 fun LabelledSwitch(title: String, detail: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .padding(vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(detail, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        // The row handles the tap, so the switch itself only shows the state.
+        Switch(checked = checked, onCheckedChange = null)
     }
 }

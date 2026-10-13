@@ -16,11 +16,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import edu.monash.wattwise.constants.ValidationRules
 import edu.monash.wattwise.ui.components.GoogleSignInButton
 import edu.monash.wattwise.ui.theme.Coral
 import edu.monash.wattwise.ui.components.PasswordField
@@ -51,14 +51,16 @@ fun LoginScreen(
     onForgotPassword: (email: String) -> Unit,
     onRegister: () -> Unit,
 ) {
-    var email by remember { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
+    // The password is not kept across a rotation, so it is never written to saved state.
     var password by remember { mutableStateOf("") }
-    var attempted by remember { mutableStateOf(false) }
+    var attempted by rememberSaveable { mutableStateOf(false) }
     // Set when "Forgot password?" is tapped without a valid email in the field.
-    var emailNeededForReset by remember { mutableStateOf(false) }
+    var emailNeededForReset by rememberSaveable { mutableStateOf(false) }
 
     val emailError = (attempted || emailNeededForReset) && !Validators.isValidEmail(email)
-    val passwordError = attempted && !Validators.isValidPassword(password)
+    // Signing in only needs a password to be typed; the strength rule applies when creating one.
+    val passwordError = attempted && password.isBlank()
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Dimens.ScreenPaddingWide),
@@ -84,7 +86,7 @@ fun LoginScreen(
             value = password,
             onValueChange = { password = it },
             label = "Password *",
-            hint = "Use at least ${ValidationRules.MIN_PASSWORD_LENGTH} characters",
+            hint = if (passwordError) "Enter your password" else "",
             isError = passwordError,
         )
         TextButton(
@@ -102,9 +104,9 @@ fun LoginScreen(
         }
         AuthMessages(errorMessage, infoMessage)
         Spacer(Modifier.height(10.dp))
-        PrimaryAction(if (isLoading) "Signing in…" else "Sign in") {
+        PrimaryAction(if (isLoading) "Signing in…" else "Sign in", isLoading = isLoading) {
             attempted = true
-            if (!isLoading && Validators.isValidEmail(email) && Validators.isValidPassword(password)) {
+            if (!isLoading && Validators.isValidEmail(email) && password.isNotBlank()) {
                 onLogin(email, password)
             }
         }

@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import edu.monash.wattwise.R
@@ -48,9 +49,13 @@ fun GoogleSignInButton(enabled: Boolean, onIdToken: (String) -> Unit, onError: (
                     val result = CredentialManager.create(context).getCredential(context, request)
                     val googleCredential = GoogleIdTokenCredential.createFrom(result.credential.data)
                     onIdToken(googleCredential.idToken)
+                } catch (e: NoCredentialException) {
+                    // The device has no Google account to offer.
+                    Log.e(TAG, "No Google account on this device", e)
+                    onError("No Google account is set up on this device. Add one in Settings, then try again.")
                 } catch (e: GetCredentialException) {
                     Log.e(TAG, "Google sign-in did not finish", e)
-                    onError("Google sign-in was cancelled or no Google account is set up on this device.")
+                    onError("Google sign-in was cancelled. Try again, or use your email and password.")
                 }
             }
         },

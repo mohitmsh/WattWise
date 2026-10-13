@@ -18,9 +18,11 @@ class AuthRepository {
     /** The signed-in user, or null. Firebase keeps the user signed in between app launches. */
     val currentUser: FirebaseUser? get() = auth.currentUser
 
+    /** Signs in an existing user with an email address and a password. */
     fun signIn(email: String, password: String): Task<AuthResult> =
         auth.signInWithEmailAndPassword(email, password)
 
+    /** Creates a new account with an email address and a password. */
     fun register(email: String, password: String): Task<AuthResult> =
         auth.createUserWithEmailAndPassword(email, password)
 
@@ -32,7 +34,9 @@ class AuthRepository {
     fun signInWithGoogle(idToken: String): Task<AuthResult> =
         auth.signInWithCredential(GoogleAuthProvider.getCredential(idToken, null))
 
+    /** Asks Firebase to send a password reset link to [email]. */
     fun sendPasswordReset(email: String): Task<Void> = auth.sendPasswordResetEmail(email)
 
+    /** Signs the user out on this device. */
     fun signOut() = auth.signOut()
 }
