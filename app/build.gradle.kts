@@ -57,6 +57,10 @@ dependencies {
     // Firebase Authentication for email/password and Google sign-in.
     implementation(platform("com.google.firebase:firebase-bom:34.0.0"))
     implementation("com.google.firebase:firebase-auth")
+    // Cloud Firestore keeps a backup of the household so it survives a reinstall.
+    implementation("com.google.firebase:firebase-firestore")
+    // Lets a coroutine wait for a Firebase result with await().
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
 
     // Credential Manager shows the Google account chooser for Google sign-in.
     implementation("androidx.credentials:credentials:1.5.0")
@@ -73,5 +77,8 @@ dependencies {
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+    // JUnit runs the calculation tests in src/test on the computer, without an emulator.
+    testImplementation("junit:junit:4.13.2")
+
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
