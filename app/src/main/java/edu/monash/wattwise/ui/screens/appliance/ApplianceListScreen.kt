@@ -25,8 +25,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,10 +46,17 @@ import edu.monash.wattwise.utils.EnergyCalculator
 import edu.monash.wattwise.utils.Formatters
 import edu.monash.wattwise.utils.TariffCalculator
 
-/** Searchable list of the household's appliances. Tapping a row opens its detail screen. */
+/**
+ * Searchable list of the household's appliances. Tapping a row opens its detail screen.
+ *
+ * @param appliances the appliances that match [query], already filtered by a Room query.
+ * @param query the text in the search box; it is kept in the ViewModel.
+ */
 @Composable
 fun ApplianceListScreen(
     appliances: List<Appliance>,
+    query: String,
+    onQueryChange: (String) -> Unit,
     tariff: String,
     dailyTargetKwh: Int,
     applianceRuns: List<ApplianceRun>,
@@ -59,19 +64,13 @@ fun ApplianceListScreen(
     onAdd: () -> Unit,
     onSelect: (Appliance) -> Unit,
 ) {
-    var query by remember { mutableStateOf("") }
-    // Search matches either the appliance name or its category.
-    val matchingAppliances = appliances.filter {
-        it.name.contains(query, ignoreCase = true) || it.category.label.contains(query, ignoreCase = true)
-    }
-
     Column(Modifier.fillMaxSize().padding(horizontal = Dimens.ScreenPadding)) {
         Spacer(Modifier.height(16.dp))
         ScreenHeader("Your devices", "Appliances", "Search by name or category. Tap a device to see its cost.", onBack)
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = query,
-            onValueChange = { query = it },
+            onValueChange = onQueryChange,
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             label = { Text("Search by name or category") },
@@ -81,7 +80,7 @@ fun ApplianceListScreen(
         Spacer(Modifier.height(14.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "${matchingAppliances.size} APPLIANCES",
+                Formatters.formatCount(appliances.size, "appliance").uppercase(),
                 style = MaterialTheme.typography.labelMedium,
                 color = TextSecondary,
             )
@@ -93,10 +92,10 @@ fun ApplianceListScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(bottom = 24.dp),
         ) {
-            items(matchingAppliances, key = { it.id }) { appliance ->
+            items(appliances, key = { it.id }) { appliance ->
                 ApplianceRow(appliance, tariff, dailyTargetKwh, applianceRuns, onClick = { onSelect(appliance) })
             }
-            if (matchingAppliances.isEmpty()) {
+            if (appliances.isEmpty()) {
                 item {
                     Text(
                         text = if (query.isBlank()) {

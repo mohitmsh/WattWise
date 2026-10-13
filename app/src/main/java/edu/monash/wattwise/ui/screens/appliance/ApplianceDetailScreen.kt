@@ -34,6 +34,7 @@ import edu.monash.wattwise.ui.theme.Electric
 import edu.monash.wattwise.ui.theme.TextSecondary
 import edu.monash.wattwise.constants.ContextThresholds
 import edu.monash.wattwise.constants.TariffRules
+import edu.monash.wattwise.data.model.ApplianceCategory
 import edu.monash.wattwise.data.model.ApplianceRun
 import edu.monash.wattwise.data.model.MeterReading
 import edu.monash.wattwise.ui.components.SurfaceCard
@@ -66,11 +67,14 @@ fun ApplianceDetailScreen(
     val liveWatts = if (channel != null) latestReading?.wattsFor(channel) else null
     val todayRuns = applianceRuns.filter { it.appliance == channel }
     val dailyCost = dailyKwh * TariffCalculator.averageRate(tariff)
-    val targetShare = if (dailyTargetKwh > 0) (dailyKwh / dailyTargetKwh * 100).toInt() else 0
+    val targetShare = if (dailyTargetKwh > 0) Formatters.toPercent(dailyKwh / dailyTargetKwh) else 0
     val isHighUse = EnergyCalculator.applianceStatus(appliance, dailyTargetKwh) == ApplianceStatus.HIGH
 
     // The advice depends on whether the appliance can be moved to a cheaper time.
     val recommendedAction = when {
+        appliance.category == ApplianceCategory.REFRIGERATION ->
+            "A fridge or freezer runs all day, so its use cannot be moved to a cheaper time. Set the fridge " +
+                "to about 4°C, keep the door seals clean and leave space behind it for air."
         appliance.category.isFlexible && tariff == TariffRules.TIME_OF_USE ->
             "This appliance can run at any time. Use it before " +
                 "${Formatters.formatClockHour(TariffRules.PEAK_START_HOUR)} or after " +

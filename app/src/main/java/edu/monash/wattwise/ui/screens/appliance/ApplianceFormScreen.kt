@@ -16,12 +16,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import edu.monash.wattwise.constants.ApplianceLimits
+import edu.monash.wattwise.constants.ValidationRules
 import edu.monash.wattwise.data.model.Appliance
 import edu.monash.wattwise.data.model.ApplianceCategory
 import edu.monash.wattwise.data.model.MeterAppliance
@@ -37,6 +38,8 @@ import edu.monash.wattwise.utils.sliderSteps
 /**
  * Form for adding or editing an appliance. Passing [existing] fills the form
  * with that appliance's values and switches the screen to edit mode.
+ *
+ * @param otherNames names of the user's other appliances, used to stop a repeated name.
  */
 @Composable
 fun ApplianceFormScreen(
@@ -49,21 +52,25 @@ fun ApplianceFormScreen(
         meterChannel: MeterAppliance?,
     ) -> Unit,
     existing: Appliance? = null,
+    otherNames: List<String> = emptyList(),
 ) {
     val isEditing = existing != null
-    var name by remember(existing?.id) { mutableStateOf(existing?.name.orEmpty()) }
-    var category by remember(existing?.id) {
+    var name by rememberSaveable(existing?.id) { mutableStateOf(existing?.name.orEmpty()) }
+    var category by rememberSaveable(existing?.id) {
         mutableStateOf(existing?.category ?: ApplianceCategory.entries.first())
     }
-    var watts by remember(existing?.id) {
+    var watts by rememberSaveable(existing?.id) {
         mutableFloatStateOf(existing?.watts?.toFloat() ?: ApplianceLimits.DEFAULT_WATTS)
     }
-    var hoursPerDay by remember(existing?.id) {
+    var hoursPerDay by rememberSaveable(existing?.id) {
         mutableFloatStateOf(existing?.hoursPerDay?.toFloat() ?: ApplianceLimits.DEFAULT_HOURS_PER_DAY)
     }
-    var meterChannel by remember(existing?.id) { mutableStateOf(existing?.meterChannel) }
-    var attempted by remember { mutableStateOf(false) }
-    val nameError = attempted && !Validators.isValidName(name)
+    var meterChannel by rememberSaveable(existing?.id) { mutableStateOf(existing?.meterChannel) }
+    var attempted by rememberSaveable { mutableStateOf(false) }
+    // Two appliances with the same name cannot be told apart in the list, so a repeat is not allowed.
+    val isDuplicate = otherNames.any { it.equals(name.trim(), ignoreCase = true) }
+    val nameValid = Validators.isValidName(name) && !isDuplicate
+    val nameError = attempted && !nameValid
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Dimens.ScreenPadding)) {
         Spacer(Modifier.height(14.dp))
@@ -76,13 +83,22 @@ fun ApplianceFormScreen(
         Spacer(Modifier.height(24.dp))
         OutlinedTextField(
             value = name,
-            onValueChange = { name = it },
+            // Extra characters are not accepted once the name reaches the longest length allowed.
+            onValueChange = { if (it.length <= ValidationRules.MAX_NAME_LENGTH) name = it },
             label = { Text("Appliance name *") },
             placeholder = { Text("e.g. Living room heater") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             isError = nameError,
-            supportingText = { Text(if (nameError) "Enter a name for the appliance" else "* Required") },
+            supportingText = {
+                Text(
+                    when {
+                        nameError && isDuplicate -> "You already have an appliance with this name"
+                        nameError -> "Enter a name for the appliance"
+                        else -> "* Required · ${name.length} of ${ValidationRules.MAX_NAME_LENGTH} characters"
+                    },
+                )
+            },
         )
         Spacer(Modifier.height(Dimens.FieldSpacing))
         DropdownField(
@@ -129,7 +145,7 @@ fun ApplianceFormScreen(
         Spacer(Modifier.height(28.dp))
         PrimaryAction(if (isEditing) "Save changes" else "Save appliance") {
             attempted = true
-            if (Validators.isValidName(name)) onSave(name.trim(), category, watts.toInt(), hoursPerDay.toDouble(), meterChannel)
+            if (nameValid) onSave(name.trim(), category, watts.toInt(), hoursPerDay.toDouble(), meterChannel)
         }
         TextButton(onClick = onCancel, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text("CANCEL", color = TextSecondary)
