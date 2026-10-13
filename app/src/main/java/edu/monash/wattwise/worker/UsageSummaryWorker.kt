@@ -11,6 +11,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import edu.monash.wattwise.constants.BackgroundWork
 import edu.monash.wattwise.constants.Reminders
+import edu.monash.wattwise.data.repository.AuthRepository
 import edu.monash.wattwise.data.repository.HouseholdRepository
 import edu.monash.wattwise.data.repository.UsageHistoryRepository
 import edu.monash.wattwise.utils.Formatters
@@ -48,7 +49,9 @@ class UsageSummaryWorker(context: Context, params: WorkerParameters) : Coroutine
      * alerts" switch in the More screen.
      */
     private suspend fun alertIfTargetPassed(totalBefore: Double, totalAfter: Double) {
-        val profile = HouseholdRepository(applicationContext).getProfileOnce() ?: return
+        // The alert is for whoever is signed in; with nobody signed in there is no target to check.
+        val userId = AuthRepository().currentUser?.uid ?: return
+        val profile = HouseholdRepository(applicationContext).getProfileOnce(userId) ?: return
         val target = profile.dailyTargetKwh
         val passedTargetNow = totalBefore <= target && totalAfter > target
         if (!passedTargetNow) return
