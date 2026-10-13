@@ -9,6 +9,7 @@ class WeatherRepository {
 
     private val weatherService = RetrofitObject.retrofitService
 
+    /** Requests the forecast for one location from the Open-Meteo API. */
     suspend fun getWeather(latitude: Double, longitude: Double): WeatherResponse {
         return weatherService.getWeather(
             latitude = latitude,
