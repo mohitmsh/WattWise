@@ -82,6 +82,7 @@ class SmartMeterDataProvider(private val context: Context) {
         return if (index >= 0) index else 0
     }
 
+    /** The time now as text in the same format as the meter file, for example "18:42:07". */
     private fun currentTimeText(): String =
         SimpleDateFormat(SmartMeter.TIME_PATTERN, Locale.getDefault()).format(Date())
 

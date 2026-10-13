@@ -25,17 +25,19 @@ The app shows how much power the home uses now, how today compares with a normal
 
 **Live power.** Shows each new reading from the smart meter. A chart compares the last 60 readings with your usual level for this hour.
 
-**Energy map.** Shows the weather near your home on a map. You can change the layer to temperature, heating and cooling, or solar. The screen also gives the best time to use large appliances.
+**Energy map.** Shows the weather near your home on a map. You can change the layer to temperature, heating and cooling, or solar. You can use the location of your device or tap a point. Tap Plan to find the cheapest time to start an appliance and to set a daily reminder.
 
 **Usage.** Shows your energy use for a day, a week or a month. The bars use colour to show the days that are within your target, near your target or over your target.
 
 **Insights.** The WattWise Coach gives advice. Each piece of advice uses your meter reading, your tariff, the weather and your household details. Tap a card to see the reason for the advice.
 
-**More.** Change your household details, home location, appliances and daily energy target. You can also set the usage alerts and the light theme here.
+**Bill forecast.** Estimates the bill for the current billing period and compares it with your budget. It tells you how much energy to use each day to stay in the budget.
+
+**More.** Change your household details, home location, appliances and budget. You can also set the usage alerts and the light theme here.
 
 **Sign-in and setup.** Create an account with an email address and a password, or sign in with Google. Then enter your home type, tariff, number of occupants and daily energy target.
 
-**Notifications.** The app sends a notification on the day you go over your daily target. It can also send a reminder before the best time to do your laundry.
+**Notifications.** The app sends a notification on the day you go over your daily target. It can also send a reminder each day before the cheapest time to start an appliance.
 
 ## About the data
 
@@ -43,7 +45,7 @@ An emulator has no smart meter, so the app simulates one. It reads one day of th
 
 The weather comes from the Open-Meteo API. The map tiles come from OpenFreeMap.
 
-Your household details, appliances and usage history stay on the device.
+Your household details, appliances and usage history are saved on the device. The household, appliances and reminder are also backed up to Cloud Firestore, so they return if you install the app again.
 
 ## How it is built
 
@@ -55,6 +57,7 @@ Your household details, appliances and usage history stay on the device.
 | Local database | Room |
 | Weather data | Retrofit and Gson (Open-Meteo API) |
 | Sign-in | Firebase Authentication (email and Google) |
+| Cloud backup | Cloud Firestore |
 | Background work | WorkManager |
 | Reminders | AlarmManager |
 | Map | MapLibre |
@@ -69,7 +72,7 @@ app/src/main/java/edu/monash/wattwise/
 ├── ui/           Screens, shared components and theme
 ├── navigation/   Routes, navigation graph and bottom bar
 ├── worker/       Daily usage check (WorkManager)
-├── reminder/     Laundry reminder (AlarmManager)
+├── reminder/     Appliance reminder (AlarmManager)
 ├── utils/        Calculations, formatters and validators
 └── constants/    Fixed values used across the app
 ```
