@@ -169,12 +169,14 @@ private fun loadLevelText(energyContext: EnergyContext): String = when {
     else -> "MODERATE"
 }
 
+/** Colour for the load level: green for low, amber for moderate and red for high. */
 private fun loadLevelColor(energyContext: EnergyContext): Color = when (loadLevelText(energyContext)) {
     "HIGH" -> Coral
     "LOW" -> StatusGood
     else -> Amber
 }
 
+/** One sentence that compares live power with the usual level for this hour. */
 private fun comparisonText(energyContext: EnergyContext): String {
     val percent = energyContext.livePercentVsTypical
     val direction = if (percent >= 0) "above" else "below"

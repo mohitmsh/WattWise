@@ -25,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,10 +81,10 @@ import kotlin.math.abs
  */
 @Composable
 fun TrendsScreen(usage: List<HourlyUsage>, tariff: String, dailyTargetKwh: Int) {
-    var metric by remember { mutableStateOf(TrendMetric.ENERGY) }
-    var period by remember { mutableStateOf(UsagePeriod.WEEK) }
-    var showDatePicker by remember { mutableStateOf(false) }
-    var selectedDateMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var metric by rememberSaveable { mutableStateOf(TrendMetric.ENERGY) }
+    var period by rememberSaveable { mutableStateOf(UsagePeriod.WEEK) }
+    var showDatePicker by rememberSaveable { mutableStateOf(false) }
+    var selectedDateMillis by rememberSaveable { mutableLongStateOf(System.currentTimeMillis()) }
 
     // Group the saved hours by day once, so each day's hours can be looked up quickly.
     val usageByDay = remember(usage) { usage.groupBy { it.dayStartMillis } }
@@ -139,7 +140,8 @@ fun TrendsScreen(usage: List<HourlyUsage>, tariff: String, dailyTargetKwh: Int) 
                         modifier = Modifier.padding(bottom = 7.dp),
                     )
                 }
-                ChangePill(changePercent, period)
+                // The comparison is shown only when the earlier period has saved usage.
+                if (previousAverage > 0.0) ChangePill(changePercent, period)
             }
             PeriodSelector(selected = period, onSelected = { period = it }, modifier = Modifier.width(170.dp))
         }
@@ -215,26 +217,33 @@ fun TrendsScreen(usage: List<HourlyUsage>, tariff: String, dailyTargetKwh: Int) 
             }
             Spacer(Modifier.height(16.dp))
 
-            // Chart 2 (line chart): energy compared with what this household usually uses.
+            // Chart 2 (line chart): the chosen metric compared with what this household usually has.
+            // In the day view the hourly lines are in kWh for every metric except cost, as in chart 1.
+            val lineUnit = when {
+                !isDayView -> metric.unit
+                metric == TrendMetric.COST -> "$"
+                else -> "kWh"
+            }
+            val lineTitle = if (isDayView && metric != TrendMetric.COST) "ENERGY" else metric.label.uppercase()
             SurfaceCard {
-                Text("ENERGY VS. TYPICAL (kWh)", style = MaterialTheme.typography.labelLarge)
+                Text("$lineTitle VS. TYPICAL ($lineUnit)", style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    ChartLegendItem("Energy used", Electric)
+                    ChartLegendItem(if (isDayView) "This day" else "This ${period.label.lowercase()}", Electric)
                     ChartLegendItem("Your typical", TextSecondary)
                 }
                 Spacer(Modifier.height(8.dp))
                 if (isDayView) {
                     ComparisonLineChart(
-                        actual = EnergyCalculator.hourlyForDay(usage, lastDay),
-                        typical = (0 until 24).map { hour -> EnergyCalculator.typicalForHour(usage, hour).toFloat() },
+                        actual = TrendCalculator.hourlyValues(usageByDay[lastDay], metric, tariff),
+                        typical = TrendCalculator.typicalHourlyValues(usageByDay, metric, tariff),
                         labels = (0 until 24).map { hour -> "$hour:00" },
                         actualColor = Electric,
                     )
                 } else {
                     ComparisonLineChart(
-                        actual = days.map { (usageByDay[it]?.sumOf { hour -> hour.kwh } ?: 0.0).toFloat() },
-                        typical = days.map { TrendCalculator.typicalForWeekday(usageByDay, it).toFloat() },
+                        actual = dailyValues.map { (it ?: 0.0).toFloat() },
+                        typical = days.map { TrendCalculator.typicalForWeekday(usageByDay, it, metric, tariff).toFloat() },
                         labels = days.map { dayLabel(it, period) },
                         actualColor = Electric,
                     )
@@ -252,15 +261,18 @@ fun TrendsScreen(usage: List<HourlyUsage>, tariff: String, dailyTargetKwh: Int) 
             }
             Spacer(Modifier.height(16.dp))
 
-            // Share of energy in each part of the day, against the household's usual share.
-            Text("WHEN YOU USE ENERGY", style = MaterialTheme.typography.labelLarge)
+            // Share of energy, or of cost for the cost metric, in each part of the day, against the usual share.
+            Text(
+                if (metric == TrendMetric.COST) "WHEN YOUR COST BUILDS UP" else "WHEN YOU USE ENERGY",
+                style = MaterialTheme.typography.labelLarge,
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.width(2.dp).height(10.dp).background(TextPrimary))
                 Spacer(Modifier.width(6.dp))
                 Text("YOUR TYPICAL SHARE", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
             }
             Spacer(Modifier.height(8.dp))
-            DayPartBars(periodUsage, usage)
+            DayPartBars(periodUsage, usage, metric, tariff)
             Spacer(Modifier.height(20.dp))
 
             // Summary of the period; tapping a tile switches the report to that metric.
@@ -324,6 +336,7 @@ private fun ChangePill(changePercent: Int, period: UsagePeriod) {
     }
 }
 
+/** Arrow that moves the report to the earlier or later period. It is grey when it cannot be used. */
 @Composable
 private fun ArrowButton(symbol: String, description: String, enabled: Boolean, onClick: () -> Unit) {
     IconButton(onClick = onClick, enabled = enabled) {
@@ -380,19 +393,19 @@ private fun TariffBreakdown(dayUsage: List<HourlyUsage>, tariff: String) {
 
 /** One [ShareBar] for each part of the day, comparing this period with the whole history. */
 @Composable
-private fun DayPartBars(periodUsage: List<HourlyUsage>, allUsage: List<HourlyUsage>) {
-    val periodParts = TrendCalculator.dayPartTotals(periodUsage)
-    val typicalParts = TrendCalculator.dayPartTotals(allUsage)
+private fun DayPartBars(periodUsage: List<HourlyUsage>, allUsage: List<HourlyUsage>, metric: TrendMetric, tariff: String) {
+    val periodParts = TrendCalculator.dayPartTotals(periodUsage, metric, tariff)
+    val typicalParts = TrendCalculator.dayPartTotals(allUsage, metric, tariff)
     val periodTotal = periodParts.sumOf { it.second }.coerceAtLeast(0.001)
     val typicalTotal = typicalParts.sumOf { it.second }.coerceAtLeast(0.001)
     val colors = listOf(SoftBlue, Electric, Amber, Coral)
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        periodParts.forEachIndexed { index, (name, kwh) ->
+        periodParts.forEachIndexed { index, (name, value) ->
             ShareBar(
                 label = name,
-                valueText = "${Formatters.formatKwh(kwh)} kWh",
-                share = (kwh / periodTotal).toFloat(),
+                valueText = if (metric == TrendMetric.COST) Formatters.formatCurrency(value) else "${Formatters.formatKwh(value)} kWh",
+                share = (value / periodTotal).toFloat(),
                 typicalShare = (typicalParts[index].second / typicalTotal).toFloat(),
                 color = colors[index],
             )
@@ -412,7 +425,8 @@ private fun PeriodSelector(selected: UsagePeriod, onSelected: (UsagePeriod) -> U
                     .weight(1f)
                     .clickable { onSelected(option) }
                     .background(if (isSelected) SurfaceRaised else Color.Transparent, shape)
-                    .padding(vertical = 9.dp),
+                    // Tall enough to be an easy touch target.
+                    .padding(vertical = 14.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -429,24 +443,26 @@ private fun PeriodSelector(selected: UsagePeriod, onSelected: (UsagePeriod) -> U
 private fun insightText(metric: TrendMetric, period: UsagePeriod, average: Double, previousAverage: Double): String {
     val name = metric.label.lowercase()
     val current = "${formatMetric(average, metric)} ${metric.unit}"
+    val subject = if (period == UsagePeriod.DAY) "Your $name on this day" else "Your average daily $name this ${period.label.lowercase()}"
     if (previousAverage <= 0.0) {
-        return "Your $name for this ${period.label.lowercase()} was $current. There is no earlier period to compare with yet."
+        return "$subject was $current. There is no earlier ${period.label.lowercase()} to compare with yet."
     }
     val direction = when {
         average > previousAverage -> "above"
         average < previousAverage -> "below"
         else -> "the same as"
     }
-    val subject = if (period == UsagePeriod.DAY) "Your $name on this day" else "Your average daily $name this ${period.label.lowercase()}"
     return "$subject ($current) was $direction the previous ${period.label.lowercase()} " +
         "(${formatMetric(previousAverage, metric)} ${metric.unit})."
 }
 
+/** Formats a value of [metric] with the correct number of decimal places. */
 private fun formatMetric(value: Double, metric: TrendMetric): String = when (metric) {
     TrendMetric.ENERGY, TrendMetric.PEAK_ENERGY -> Formatters.formatKwh(value)
     TrendMetric.COST, TrendMetric.BASE_LOAD -> Formatters.formatKilowatts(value)
 }
 
+/** Short name of a metric for the summary tiles. */
 private fun tileLabel(metric: TrendMetric): String = when (metric) {
     TrendMetric.ENERGY -> "Energy"
     TrendMetric.COST -> "Cost $"
@@ -465,6 +481,7 @@ private fun dayColor(value: Double?, metric: TrendMetric, dailyTargetKwh: Int, a
     }
 }
 
+/** Chart colour for each tariff period. */
 private fun periodColor(period: TariffPeriod): Color = when (period) {
     TariffPeriod.PEAK -> Amber
     TariffPeriod.OFF_PEAK -> Cyan

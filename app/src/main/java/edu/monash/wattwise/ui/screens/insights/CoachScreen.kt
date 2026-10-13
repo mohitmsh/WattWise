@@ -16,7 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,7 +61,7 @@ fun CoachScreen(
     appliances: List<Appliance>,
     applianceRuns: List<ApplianceRun>,
     onEfficiency: () -> Unit,
-    onGoals: () -> Unit,
+    onBill: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().padding(horizontal = Dimens.ScreenPadding)) {
         Spacer(Modifier.height(18.dp))
@@ -100,11 +100,11 @@ fun CoachScreen(
             }
             item {
                 SmartActionCard(
-                    title = "What if you shifted laundry later?",
-                    reason = "Try the scenario planner to compare cost before changing your routine.",
-                    saving = "EXPLORE",
-                    action = "OPEN PLANNER",
-                    onAction = onGoals,
+                    title = "Will this bill fit your budget?",
+                    reason = "See the estimated bill for this billing period and how much you can use each day.",
+                    saving = "FORECAST",
+                    action = "OPEN BILL FORECAST",
+                    onAction = onBill,
                 )
             }
         }
@@ -211,7 +211,7 @@ private fun EnergySplitCard(
 /** One piece of advice. Tapping the card shows or hides the reason behind it. */
 @Composable
 private fun RecommendationCard(recommendation: Recommendation) {
-    var showReason by remember { mutableStateOf(false) }
+    var showReason by rememberSaveable { mutableStateOf(false) }
     val color = if (recommendation.isWarning) Amber else Electric
 
     SurfaceCard(Modifier.clickable { showReason = !showReason }) {

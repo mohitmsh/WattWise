@@ -140,7 +140,11 @@ fun TodayScreen(
 
         val percent = energyContext.todayPercentVsTypical
         val isBelowTypical = percent <= 0
-        val comparison = if (isBelowTypical) "${abs(percent)}% below" else "$percent% above"
+        val comparison = when {
+            percent == 0 -> "You’re using the same as your usual amount for this time of day."
+            isBelowTypical -> "You’re ${abs(percent)}% below your usual usage for this time of day."
+            else -> "You’re $percent% above your usual usage for this time of day."
+        }
         // Tapping the summary opens Insights, where the advice behind it is explained.
         SurfaceCard(
             modifier = Modifier.clickable(onClick = onCoach),
@@ -156,8 +160,7 @@ fun TodayScreen(
             }
             Spacer(Modifier.height(5.dp))
             Text(
-                "You’re $comparison your usual usage for this time of day. " +
-                    "Your tariff period is ${energyContext.tariffPeriod.label.lowercase()}" +
+                "$comparison Your tariff period is ${energyContext.tariffPeriod.label.lowercase()}" +
                     (outsideTemperature?.let { " and it is ${it.roundToInt()}°C outside." } ?: "."),
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary,
@@ -169,7 +172,7 @@ fun TodayScreen(
             MonitorCard(
                 title = "Energy status",
                 status = if (isWithinTarget) "Within target" else "Over target",
-                detail = "${(energyContext.targetProgress * 100).toInt()}% of ${energyContext.dailyTargetKwh} kWh",
+                detail = "${Formatters.toPercent(energyContext.targetProgress)}% of ${energyContext.dailyTargetKwh} kWh",
                 statusColor = if (isWithinTarget) StatusGood else Amber,
                 modifier = Modifier.weight(1f).clickable(onClick = onUsage),
             )

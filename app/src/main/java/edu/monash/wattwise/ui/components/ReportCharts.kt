@@ -41,6 +41,7 @@ import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 import com.github.mikephil.charting.formatter.ValueFormatter
 import edu.monash.wattwise.R
+import edu.monash.wattwise.utils.Formatters
 import edu.monash.wattwise.ui.theme.Border
 import edu.monash.wattwise.ui.theme.Dimens
 import edu.monash.wattwise.ui.theme.DinPro
@@ -189,6 +190,7 @@ private fun applyChartStyle(chart: BarLineChartBase<*>, context: Context) {
     chart.axisRight.isEnabled = false
 }
 
+/** Sets the colour, width and points of one line on a line chart. */
 private fun styleLine(dataSet: LineDataSet, color: Color, showPoints: Boolean) {
     dataSet.color = color.toArgb()
     dataSet.lineWidth = 2f
@@ -204,6 +206,7 @@ private fun styleLine(dataSet: LineDataSet, color: Color, showPoints: Boolean) {
     dataSet.isHighlightEnabled = false
 }
 
+/** Puts [labels] under the chart, one for each value. */
 private fun showLabels(chart: BarLineChartBase<*>, labels: List<String>) {
     chart.xAxis.valueFormatter = IndexAxisValueFormatter(labels)
     chart.xAxis.labelCount = minOf(labels.size, MAX_AXIS_LABELS)
@@ -275,7 +278,7 @@ fun ShareBar(label: String, valueText: String, share: Float, typicalShare: Float
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(label.uppercase(), style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.width(8.dp))
-            Text("${(share * 100).toInt()}%", style = MaterialTheme.typography.labelMedium, color = color)
+            Text("${Formatters.toPercent(share)}%", style = MaterialTheme.typography.labelMedium, color = color)
             Spacer(Modifier.weight(1f))
             Text(valueText, fontFamily = DinPro, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }

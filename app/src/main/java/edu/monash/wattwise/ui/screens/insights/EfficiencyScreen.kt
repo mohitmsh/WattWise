@@ -93,7 +93,7 @@ fun EfficiencyScreen(energyContext: EnergyContext?, onBack: () -> Unit) {
             MonitorTile(
                 icon = R.drawable.insights_icon,
                 label = "Daily target",
-                value = "${(energyContext.targetProgress * 100).toInt()}",
+                value = "${Formatters.toPercent(energyContext.targetProgress)}",
                 unit = "%",
                 chipText = if (energyContext.targetProgress <= 1f) "Within ${energyContext.dailyTargetKwh} kWh" else "Over ${energyContext.dailyTargetKwh} kWh",
                 isGood = energyContext.targetProgress <= 1f,
