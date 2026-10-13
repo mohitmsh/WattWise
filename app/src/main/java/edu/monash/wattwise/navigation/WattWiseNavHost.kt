@@ -28,7 +28,7 @@ import edu.monash.wattwise.ui.screens.dashboard.TodayScreen
 import edu.monash.wattwise.ui.screens.dashboard.TrendsScreen
 import edu.monash.wattwise.ui.screens.insights.CoachScreen
 import edu.monash.wattwise.ui.screens.insights.EfficiencyScreen
-import edu.monash.wattwise.ui.screens.insights.GoalsScreen
+import edu.monash.wattwise.ui.screens.insights.BillForecastScreen
 import edu.monash.wattwise.ui.screens.dashboard.EnergyMapScreen
 import edu.monash.wattwise.ui.screens.profile.ProfileScreen
 import edu.monash.wattwise.ui.theme.ThemeSettings
@@ -38,7 +38,7 @@ import edu.monash.wattwise.utils.EnergyCalculator
 import edu.monash.wattwise.viewmodel.ApplianceViewModel
 import edu.monash.wattwise.viewmodel.AuthViewModel
 import edu.monash.wattwise.viewmodel.HouseholdViewModel
-import edu.monash.wattwise.viewmodel.ScenarioViewModel
+import edu.monash.wattwise.viewmodel.ReminderViewModel
 import edu.monash.wattwise.viewmodel.SmartMeterViewModel
 import edu.monash.wattwise.viewmodel.UsageViewModel
 import edu.monash.wattwise.viewmodel.WeatherViewModel
@@ -56,20 +56,26 @@ fun WattWiseNavHost(
     weatherViewModel: WeatherViewModel,
     smartMeterViewModel: SmartMeterViewModel,
     usageViewModel: UsageViewModel,
-    scenarioViewModel: ScenarioViewModel,
+    reminderViewModel: ReminderViewModel,
     authViewModel: AuthViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val appliances by applianceViewModel.appliances.collectAsState(initial = emptyList())
-    val householdProfile by householdViewModel.profile.collectAsState(initial = null)
+    // Household, appliances and plan belong to the signed-in user, so they are read for that user's id
+    // and read again when a different user signs in.
+    val userId = authViewModel.currentUser?.uid
+    val appliances by remember(userId) { applianceViewModel.getAppliances(userId) }
+        .collectAsState(initial = emptyList())
+    val householdProfile by remember(userId) { householdViewModel.getProfile(userId) }
+        .collectAsState(initial = null)
     val weather by weatherViewModel.retrofitResponse
     val placeWeather by weatherViewModel.placeWeather
+    val placeWeatherFailed by weatherViewModel.placeWeatherFailed
     val reading by smartMeterViewModel.latestReading.collectAsState()
     val recentKilowatts by smartMeterViewModel.recentKilowatts.collectAsState()
     val todayKwh by smartMeterViewModel.todayKwh.collectAsState()
     val applianceRuns by smartMeterViewModel.applianceRuns.collectAsState()
     val usage by usageViewModel.allUsage.collectAsState(initial = emptyList())
-    val scenarioPlan by scenarioViewModel.plan.collectAsState(initial = null)
+    val reminder by remember(userId) { reminderViewModel.getReminder(userId) }.collectAsState(initial = null)
 
     // The home location saved from the map, or Melbourne until one is chosen.
     val homePlace = MapPlace(
@@ -112,8 +118,30 @@ fun WattWiseNavHost(
     // A user who is still signed in from last time goes straight to Home.
     val startDestination = remember { if (authViewModel.currentUser != null) Routes.TODAY else Routes.ONBOARDING }
     // After signing in, a user with no saved household is sent to the household form first.
+    // The profile is read once from Room here, because the new user's profile has not been collected yet.
     val openAfterSignIn: () -> Unit = {
-        navController.navigateAndClearBackStack(if (householdProfile != null) Routes.TODAY else Routes.SETUP)
+        val signedInUserId = authViewModel.currentUser?.uid
+        if (signedInUserId != null) {
+            householdViewModel.checkProfileExists(signedInUserId) { hasProfile ->
+                // The check may restore the reminder from the cloud backup, so set its alarm afterwards.
+                reminderViewModel.restoreReminder(signedInUserId)
+                navController.navigateAndClearBackStack(if (hasProfile) Routes.TODAY else Routes.SETUP)
+            }
+        }
+    }
+
+    // When the app opens with a user still signed in: restore their reminder, and send a user
+    // who never finished the household form back to it.
+    LaunchedEffect(Unit) {
+        val signedInUserId = authViewModel.currentUser?.uid
+        if (signedInUserId != null) {
+            householdViewModel.checkProfileExists(signedInUserId) { hasProfile ->
+                // Android removes alarms when an app is updated or force-stopped, so set the reminder again.
+                // This runs after the check, because the check may restore the reminder from the cloud backup.
+                reminderViewModel.restoreReminder(signedInUserId)
+                if (!hasProfile) navController.navigateAndClearBackStack(Routes.SETUP)
+            }
+        }
     }
 
     NavHost(navController = navController, startDestination = startDestination, modifier = modifier) {
@@ -154,17 +182,28 @@ fun WattWiseNavHost(
             )
         }
         composable(Routes.SETUP) {
+            // The form is for a signed-in user; without one there is nobody to save it for.
+            val signedInUserId = userId ?: return@composable
             HouseholdSetupScreen(
+                userId = signedInUserId,
                 onSave = { profile ->
                     householdViewModel.saveProfile(profile)
                     navController.navigateAndClearBackStack(Routes.TODAY)
                 },
-                onCancel = goBack,
+                // There is no earlier screen to go back to, so cancelling signs out and returns to the start.
+                onCancel = {
+                    authViewModel.signOut()
+                    navController.navigateAndClearBackStack(Routes.ONBOARDING)
+                },
             )
         }
         composable(Routes.EDIT_HOUSEHOLD) {
+            // Wait for the saved profile, so the form opens with the saved values and keeps
+            // what the user has typed if the screen is rotated.
+            val profile = householdProfile ?: return@composable
             HouseholdSetupScreen(
-                existing = householdProfile,
+                userId = profile.userId,
+                existing = profile,
                 isEditing = true,
                 onSave = { profile ->
                     householdViewModel.saveProfile(profile)
@@ -176,6 +215,10 @@ fun WattWiseNavHost(
 
         // Bottom bar screens
         composable(Routes.TODAY) {
+            // If an earlier weather request failed, for example while offline, ask again when Home opens.
+            LaunchedEffect(Unit) {
+                if (weather == null) weatherViewModel.getWeather(homePlace.latitude, homePlace.longitude)
+            }
             TodayScreen(
                 outsideTemperature = outsideTemperature,
                 energyContext = energyContext,
@@ -191,21 +234,33 @@ fun WattWiseNavHost(
         }
         composable(Routes.MAP) {
             // Load the forecast for every town, and for the home if it is not one of them.
-            LaunchedEffect(homePlace) {
-                weatherViewModel.getWeatherForPlaces((MapSettings.PLACES + homePlace).distinctBy { it.name })
-            }
+            val mapPlaces = (MapSettings.PLACES + homePlace).distinctBy { it.name }
+            LaunchedEffect(homePlace) { weatherViewModel.getWeatherForPlaces(mapPlaces) }
             EnergyMapScreen(
                 savedPlace = homePlace,
                 placeWeather = placeWeather,
                 tariff = tariff,
-                onPlaceSelected = { place ->
-                    // A town's forecast is already loaded; a tapped point needs its own request.
-                    if (place.name == MapSettings.CUSTOM_PLACE_NAME) weatherViewModel.getWeatherForPlaces(listOf(place))
+                loadFailed = placeWeatherFailed,
+                onRetry = { weatherViewModel.getWeatherForPlaces(mapPlaces) },
+                reminder = reminder,
+                onSetReminder = { appliance, startHour ->
+                    userId?.let { reminderViewModel.setReminder(it, appliance.label, startHour) }
                 },
-                onSave = { place -> householdViewModel.saveLocation(householdProfile, place) },
+                onRemoveReminder = { userId?.let { reminderViewModel.removeReminder(it) } },
+                onFindMyLocation = { onResult -> householdViewModel.findDeviceLocation(onResult) },
+                onPlaceSelected = { place ->
+                    // A town's forecast is already loaded; a tapped point or the device's location needs its own request.
+                    if (place !in MapSettings.PLACES) weatherViewModel.getWeatherForPlaces(listOf(place))
+                },
+                onSave = { place -> userId?.let { householdViewModel.saveLocation(it, householdProfile, place) } },
             )
         }
-        composable(Routes.TRENDS) { TrendsScreen(usage, tariff, dailyTargetKwh) }
+        composable(Routes.TRENDS) {
+            // Room holds finished hours only. Adding the energy used so far in the current hour
+            // makes today's figure in the report match the one on Home.
+            val usageWithLiveHour = remember(usage, todayKwh) { EnergyCalculator.withLiveHour(usage, todayKwh) }
+            TrendsScreen(usageWithLiveHour, tariff, dailyTargetKwh)
+        }
         composable(Routes.COACH) {
             CoachScreen(
                 recommendations = recommendations,
@@ -218,7 +273,7 @@ fun WattWiseNavHost(
                 appliances = appliances,
                 applianceRuns = applianceRuns,
                 onEfficiency = { navController.navigate(Routes.EFFICIENCY) },
-                onGoals = { navController.navigate(Routes.GOALS) },
+                onBill = { navController.navigate(Routes.BILL) },
             )
         }
         composable(Routes.PROFILE) {
@@ -226,14 +281,20 @@ fun WattWiseNavHost(
                 profile = householdProfile,
                 applianceCount = appliances.size,
                 onEditHousehold = { navController.navigate(Routes.EDIT_HOUSEHOLD) },
-                onLightThemeChange = { lightTheme -> householdViewModel.saveTheme(householdProfile, lightTheme) },
-                onUsageAlertsChange = { enabled -> householdViewModel.saveUsageAlerts(householdProfile, enabled) },
+                onLightThemeChange = { lightTheme ->
+                    userId?.let { householdViewModel.saveTheme(it, householdProfile, lightTheme) }
+                },
+                onUsageAlertsChange = { enabled ->
+                    userId?.let { householdViewModel.saveUsageAlerts(it, householdProfile, enabled) }
+                },
                 onHomeLocation = { navController.navigateToTab(Routes.MAP) },
                 onAppliances = { navController.navigate(Routes.APPLIANCES) },
-                onGoals = { navController.navigate(Routes.GOALS) },
+                onBill = { navController.navigate(Routes.BILL) },
                 userName = authViewModel.currentUser?.displayName,
                 userEmail = authViewModel.currentUser?.email,
                 onLogout = {
+                    // The reminder belongs to this user, so its alarm stops until they sign in again.
+                    reminderViewModel.cancelReminderAlarm()
                     authViewModel.signOut()
                     navController.navigateAndClearBackStack(Routes.ONBOARDING)
                 },
@@ -245,8 +306,12 @@ fun WattWiseNavHost(
 
         // Appliance list, detail and form
         composable(Routes.APPLIANCES) {
+            // Run the search when the screen opens, so the list is ready with the last search text.
+            LaunchedEffect(userId) { applianceViewModel.search(userId, applianceViewModel.searchQuery) }
             ApplianceListScreen(
-                appliances = appliances,
+                appliances = applianceViewModel.searchResults,
+                query = applianceViewModel.searchQuery,
+                onQueryChange = { text -> applianceViewModel.search(userId, text) },
                 tariff = tariff,
                 dailyTargetKwh = dailyTargetKwh,
                 applianceRuns = applianceRuns,
@@ -260,16 +325,20 @@ fun WattWiseNavHost(
         }
         composable(Routes.ADD_APPLIANCE) {
             ApplianceFormScreen(
+                otherNames = appliances.map { it.name },
                 onCancel = goBack,
                 onSave = { name, category, watts, hoursPerDay, meterChannel ->
-                    applianceViewModel.addAppliance(name, category, watts, hoursPerDay, meterChannel)
+                    userId?.let { applianceViewModel.addAppliance(it, name, category, watts, hoursPerDay, meterChannel) }
                     goBack()
                 },
             )
         }
         composable(Routes.EDIT_APPLIANCE) {
+            val editing = applianceViewModel.selectedAppliance
             ApplianceFormScreen(
-                existing = applianceViewModel.selectedAppliance,
+                existing = editing,
+                // Its own name is left out, so saving without renaming is not treated as a repeat.
+                otherNames = appliances.filter { it.id != editing?.id }.map { it.name },
                 onCancel = goBack,
                 onSave = { name, category, watts, hoursPerDay, meterChannel ->
                     applianceViewModel.updateSelectedAppliance(name, category, watts, hoursPerDay, meterChannel)
@@ -296,17 +365,16 @@ fun WattWiseNavHost(
         }
 
         // Screens opened from the tabs
-        composable(Routes.GOALS) {
-            GoalsScreen(
-                plan = scenarioPlan,
-                energyContext = energyContext,
+        composable(Routes.BILL) {
+            // The forecast needs the billing date and the budget, so wait for the saved profile.
+            val profile = householdProfile ?: return@composable
+            BillForecastScreen(
+                usage = usage,
                 tariff = tariff,
-                onSavePlan = { startHour, dryerDays, monthlySaving ->
-                    val reminderEnabled = scenarioPlan?.reminderEnabled ?: false
-                    scenarioViewModel.savePlan(startHour, dryerDays, monthlySaving, reminderEnabled)
-                },
-                onSetReminder = { enabled -> scenarioPlan?.let { scenarioViewModel.setReminder(it, enabled) } },
-                onDeletePlan = { scenarioViewModel.deletePlan() },
+                billingStartMillis = profile.billingStartDateMillis,
+                savedBudget = profile.monthlyBudget,
+                appliances = appliances,
+                onSaveBudget = { budget -> householdViewModel.saveBudget(profile, budget) },
                 onBack = goBack,
             )
         }

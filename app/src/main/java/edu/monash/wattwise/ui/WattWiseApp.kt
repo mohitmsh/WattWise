@@ -22,7 +22,7 @@ import edu.monash.wattwise.ui.theme.TextPrimary
 import edu.monash.wattwise.viewmodel.ApplianceViewModel
 import edu.monash.wattwise.viewmodel.AuthViewModel
 import edu.monash.wattwise.viewmodel.HouseholdViewModel
-import edu.monash.wattwise.viewmodel.ScenarioViewModel
+import edu.monash.wattwise.viewmodel.ReminderViewModel
 import edu.monash.wattwise.viewmodel.SmartMeterViewModel
 import edu.monash.wattwise.viewmodel.UsageViewModel
 import edu.monash.wattwise.viewmodel.WeatherViewModel
@@ -38,7 +38,7 @@ fun WattWiseApp(
     weatherViewModel: WeatherViewModel,
     smartMeterViewModel: SmartMeterViewModel,
     usageViewModel: UsageViewModel,
-    scenarioViewModel: ScenarioViewModel,
+    reminderViewModel: ReminderViewModel,
     authViewModel: AuthViewModel,
 ) {
     val navController = rememberNavController()
@@ -61,7 +61,7 @@ fun WattWiseApp(
             weatherViewModel = weatherViewModel,
             smartMeterViewModel = smartMeterViewModel,
             usageViewModel = usageViewModel,
-            scenarioViewModel = scenarioViewModel,
+            reminderViewModel = reminderViewModel,
             authViewModel = authViewModel,
             modifier = Modifier
                 .fillMaxSize()

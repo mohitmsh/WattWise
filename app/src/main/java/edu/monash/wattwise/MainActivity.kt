@@ -9,7 +9,7 @@ import edu.monash.wattwise.ui.theme.WattWiseTheme
 import edu.monash.wattwise.viewmodel.ApplianceViewModel
 import edu.monash.wattwise.viewmodel.AuthViewModel
 import edu.monash.wattwise.viewmodel.HouseholdViewModel
-import edu.monash.wattwise.viewmodel.ScenarioViewModel
+import edu.monash.wattwise.viewmodel.ReminderViewModel
 import edu.monash.wattwise.viewmodel.SmartMeterViewModel
 import edu.monash.wattwise.viewmodel.UsageViewModel
 import edu.monash.wattwise.viewmodel.WeatherViewModel
@@ -26,7 +26,7 @@ class MainActivity : ComponentActivity() {
     private val weatherViewModel: WeatherViewModel by viewModels()
     private val smartMeterViewModel: SmartMeterViewModel by viewModels()
     private val usageViewModel: UsageViewModel by viewModels()
-    private val scenarioViewModel: ScenarioViewModel by viewModels()
+    private val reminderViewModel: ReminderViewModel by viewModels()
     private val authViewModel: AuthViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
                     weatherViewModel,
                     smartMeterViewModel,
                     usageViewModel,
-                    scenarioViewModel,
+                    reminderViewModel,
                     authViewModel,
                 )
             }
