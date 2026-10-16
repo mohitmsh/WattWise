@@ -22,10 +22,11 @@ data class ApplianceReminder(
  * The appliances a household can usually run at a different time of day.
  *
  * @param shortLabel a shorter name that fits on a chip.
- * @param loadKwh energy one normal cycle uses, a typical figure for the appliance.
+ * @param loadKwh energy one normal cycle uses. The figures are for typical new 3 star
+ * appliances: a warm wash, a vented dryer and a 14 place dishwasher (EnergyAustralia, 2022).
  */
 enum class FlexibleAppliance(val label: String, val shortLabel: String, val loadKwh: Double) {
-    WASHING_MACHINE("Washing machine", "Washer", 1.0),
-    TUMBLE_DRYER("Tumble dryer", "Dryer", 2.5),
-    DISHWASHER("Dishwasher", "Dishwasher", 1.2),
+    WASHING_MACHINE("Washing machine", "Washer", 0.9),
+    TUMBLE_DRYER("Tumble dryer", "Dryer", 2.9),
+    DISHWASHER("Dishwasher", "Dishwasher", 0.9),
 }

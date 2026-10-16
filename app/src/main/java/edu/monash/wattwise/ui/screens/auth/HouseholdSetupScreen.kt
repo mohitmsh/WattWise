@@ -144,6 +144,7 @@ fun HouseholdSetupScreen(
                 HouseholdOptions.MAX_DAILY_TARGET_KWH,
                 HouseholdOptions.DAILY_TARGET_STEP_KWH,
             ),
+            // 12 kWh a day is the Victorian average for a home of two or three people (ACIL Allen Consulting, 2019).
             hint = "A typical two-person home uses about 12 kWh a day. Home and Usage show each day " +
                 "against this target, and you can change it later.",
         )

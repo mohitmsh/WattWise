@@ -46,8 +46,8 @@ class CalculatorsTest {
         assertEquals(20, forecast.daysLeft)
         assertEquals(30.0, forecast.costSoFar, TOLERANCE)
         assertEquals(3.0, forecast.averageDailyCost, TOLERANCE)
-        // $30 used + 20 days at $3 + 30 days of supply charge at $1.10.
-        assertEquals(30.0 + 60.0 + 33.0, forecast.projectedBill, TOLERANCE)
+        // $30 used + 20 days at $3 + 30 days of supply charge at $1.20.
+        assertEquals(30.0 + 60.0 + 36.0, forecast.projectedBill, TOLERANCE)
         // Every day costs the same, so the low and high estimates equal the estimate.
         assertEquals(forecast.projectedBill, forecast.lowEstimate, TOLERANCE)
         assertEquals(forecast.projectedBill, forecast.highEstimate, TOLERANCE)
@@ -73,8 +73,8 @@ class CalculatorsTest {
             HourlyUsage(dayStartMillis = DateUtils.addDays(today, -daysAgo), hour = 12, kwh = 10.0)
         }
         val forecast = BillCalculator.forecast(usage, FLAT_RATE, DateUtils.addDays(today, -10), now)
-        // $123 budget - $33 supply - $30 used = $60 for 20 days = $3 a day = 10 kWh at $0.30.
-        assertEquals(10.0, BillCalculator.dailyAllowanceKwh(forecast, budget = 123, tariff = FLAT_RATE), TOLERANCE)
+        // $126 budget - $36 supply - $30 used = $60 for 20 days = $3 a day = 10 kWh at $0.30.
+        assertEquals(10.0, BillCalculator.dailyAllowanceKwh(forecast, budget = 126, tariff = FLAT_RATE), TOLERANCE)
     }
 
     // ---- Formatters

@@ -54,8 +54,12 @@ object ApplianceLimits {
 object BillRules {
     /** Length of one billing period in days. */
     const val PERIOD_DAYS = 30
-    /** Fixed charge for being connected to the grid, in dollars for each day. */
-    const val DAILY_SUPPLY_CHARGE = 1.10
+    /**
+     * Fixed charge for being connected to the grid, in dollars for each day.
+     * An example value inside the range of the 2026-27 Victorian Default Offer,
+     * which is $1.19 to $1.38 a day (Essential Services Commission, 2026).
+     */
+    const val DAILY_SUPPLY_CHARGE = 1.20
     /** Number of cheapest and most expensive days used for the low and high estimates. */
     const val RANGE_DAYS = 7
     const val MIN_BUDGET = 60f
@@ -155,7 +159,11 @@ object TariffRules {
     const val SOLAR_START_HOUR = 10
     const val SOLAR_END_HOUR = 15
 
-    // Prices in dollars per kWh.
+    // Prices in dollars per kWh. They are fixed example prices, not the prices of one retailer.
+    // Each one is inside the range of the 2026-27 Victorian Default Offer for homes
+    // (Essential Services Commission, 2026): peak $0.38 to $0.48, off-peak $0.21 to $0.23
+    // and flat rate $0.26 to $0.32. SOLAR_RATE is an assumption: the feed-in credit a home
+    // gives up when it uses its own solar power. The regulated minimum credit is close to zero.
     const val PEAK_RATE = 0.38
     const val OFF_PEAK_RATE = 0.22
     const val FLAT_RATE = 0.30
