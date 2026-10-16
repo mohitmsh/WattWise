@@ -306,8 +306,9 @@ fun WattWiseNavHost(
 
         // Appliance list, detail and form
         composable(Routes.APPLIANCES) {
-            // Run the search when the screen opens, so the list is ready with the last search text.
-            LaunchedEffect(userId) { applianceViewModel.search(userId, applianceViewModel.searchQuery) }
+            // Each visit starts with an empty search, so the list shows every appliance,
+            // including one the user has just added.
+            LaunchedEffect(userId) { applianceViewModel.search(userId, "") }
             ApplianceListScreen(
                 appliances = applianceViewModel.searchResults,
                 query = applianceViewModel.searchQuery,

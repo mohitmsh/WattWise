@@ -32,8 +32,10 @@ import edu.monash.wattwise.ui.components.PrimaryAction
 import edu.monash.wattwise.ui.components.ScreenHeader
 import edu.monash.wattwise.ui.theme.Dimens
 import edu.monash.wattwise.ui.theme.TextSecondary
+import edu.monash.wattwise.utils.Formatters
 import edu.monash.wattwise.utils.Validators
 import edu.monash.wattwise.utils.sliderSteps
+import kotlin.math.roundToInt
 
 /**
  * Form for adding or editing an appliance. Passing [existing] fills the form
@@ -67,6 +69,10 @@ fun ApplianceFormScreen(
     }
     var meterChannel by rememberSaveable(existing?.id) { mutableStateOf(existing?.meterChannel) }
     var attempted by rememberSaveable { mutableStateOf(false) }
+    // A slider gives a Float such as 2.4999998, so round it to the nearest step before it is shown or saved.
+    val roundedWatts = ((watts / ApplianceLimits.WATTS_STEP).roundToInt() * ApplianceLimits.WATTS_STEP).roundToInt()
+    val roundedHours = (hoursPerDay / ApplianceLimits.HOURS_STEP).roundToInt() * ApplianceLimits.HOURS_STEP.toDouble()
+
     // Two appliances with the same name cannot be told apart in the list, so a repeat is not allowed.
     val isDuplicate = otherNames.any { it.equals(name.trim(), ignoreCase = true) }
     val nameValid = Validators.isValidName(name) && !isDuplicate
@@ -125,7 +131,7 @@ fun ApplianceFormScreen(
         Spacer(Modifier.height(24.dp))
         LabelledSlider(
             label = "Power rating",
-            valueText = "${watts.toInt()} watts",
+            valueText = "$roundedWatts watts",
             value = watts,
             onValueChange = { watts = it },
             valueRange = ApplianceLimits.MIN_WATTS..ApplianceLimits.MAX_WATTS,
@@ -135,7 +141,7 @@ fun ApplianceFormScreen(
         Spacer(Modifier.height(18.dp))
         LabelledSlider(
             label = "Use on a normal day",
-            valueText = "$hoursPerDay hours",
+            valueText = "${Formatters.formatKwh(roundedHours)} hours",
             value = hoursPerDay,
             onValueChange = { hoursPerDay = it },
             valueRange = ApplianceLimits.MIN_HOURS_PER_DAY..ApplianceLimits.MAX_HOURS_PER_DAY,
@@ -145,7 +151,7 @@ fun ApplianceFormScreen(
         Spacer(Modifier.height(28.dp))
         PrimaryAction(if (isEditing) "Save changes" else "Save appliance") {
             attempted = true
-            if (nameValid) onSave(name.trim(), category, watts.toInt(), hoursPerDay.toDouble(), meterChannel)
+            if (nameValid) onSave(name.trim(), category, roundedWatts, roundedHours, meterChannel)
         }
         TextButton(onClick = onCancel, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text("CANCEL", color = TextSecondary)

@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -76,6 +77,12 @@ fun ApplianceListScreen(
             label = { Text("Search by name or category") },
             placeholder = { Text("e.g. heater or laundry") },
             leadingIcon = { Icon(painterResource(R.drawable.search_icon), contentDescription = null) },
+            // A clear button, so an old search never hides new appliances by mistake.
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    TextButton(onClick = { onQueryChange("") }) { Text("CLEAR", color = TextSecondary) }
+                }
+            },
         )
         Spacer(Modifier.height(14.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {

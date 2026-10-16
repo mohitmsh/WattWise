@@ -69,6 +69,7 @@ private const val MAX_AXIS_LABELS = 7
  * placed in Compose with AndroidView.
  *
  * @param barColors one colour per bar, so a bar can show its status.
+ * @param animationKey the chart animates only when this changes, for example a new period.
  */
 @Composable
 fun TrendBarChart(
@@ -77,6 +78,7 @@ fun TrendBarChart(
     barColors: List<Color>,
     average: Float,
     modifier: Modifier = Modifier,
+    animationKey: Any = labels,
 ) {
     AndroidView(
         modifier = modifier.fillMaxWidth().height(ChartHeight),
@@ -107,7 +109,7 @@ fun TrendBarChart(
                 chart.axisLeft.addLimitLine(averageLine)
             }
             showLabels(chart, labels)
-            animateWhenChanged(chart, values)
+            animateWhenChanged(chart, animationKey)
         },
     )
 }
@@ -120,6 +122,7 @@ fun TrendBarChart(
  * @param animateChanges false for a chart that receives new readings every few
  * seconds, so it updates in place and does not replay its animation each time.
  * @param startAtZero false makes the y-axis fit the values, so small changes are easy to see.
+ * @param animationKey the chart animates only when this changes, for example a new period.
  */
 @Composable
 fun ComparisonLineChart(
@@ -130,6 +133,7 @@ fun ComparisonLineChart(
     modifier: Modifier = Modifier,
     animateChanges: Boolean = true,
     startAtZero: Boolean = true,
+    animationKey: Any = labels,
 ) {
     AndroidView(
         modifier = modifier.fillMaxWidth().height(ChartHeight),
@@ -159,7 +163,7 @@ fun ComparisonLineChart(
             // The typical line is added first so the actual line is drawn on top of it.
             chart.data = LineData(typicalDataSet, actualDataSet, latestDataSet)
             showLabels(chart, labels)
-            if (animateChanges) animateWhenChanged(chart, actual + typical) else chart.invalidate()
+            if (animateChanges) animateWhenChanged(chart, animationKey) else chart.invalidate()
         },
     )
 }
@@ -212,10 +216,14 @@ private fun showLabels(chart: BarLineChartBase<*>, labels: List<String>) {
     chart.xAxis.labelCount = minOf(labels.size, MAX_AXIS_LABELS)
 }
 
-/** Animates only when the data is different from last time, so the chart does not flicker. */
-private fun animateWhenChanged(chart: BarLineChartBase<*>, values: List<Float>) {
-    if (chart.tag != values) {
-        chart.tag = values
+/**
+ * Animates only when [key] is different from last time, for example when the
+ * user picks another period. When only the values change, such as a new meter
+ * reading every few seconds, the chart is redrawn in place and does not flicker.
+ */
+private fun animateWhenChanged(chart: BarLineChartBase<*>, key: Any) {
+    if (chart.tag != key) {
+        chart.tag = key
         chart.animateY(CHART_ANIMATION_MILLIS)
     } else {
         chart.invalidate()

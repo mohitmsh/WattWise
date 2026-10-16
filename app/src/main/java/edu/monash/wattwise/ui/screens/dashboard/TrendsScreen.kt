@@ -93,6 +93,9 @@ fun TrendsScreen(usage: List<HourlyUsage>, tariff: String, dailyTargetKwh: Int) 
     val days = TrendCalculator.daysEndingOn(lastDay, period.dayCount)
     val periodUsage = days.flatMap { usageByDay[it] ?: emptyList() }
     val isDayView = period == UsagePeriod.DAY
+    // The charts animate when the user changes the metric, the period or the date,
+    // not each time the live meter reading changes today's figure.
+    val chartKey = listOf(metric, period, lastDay)
 
     // One value of the chosen metric for each day in this period and in the period before it.
     val dailyValues = days.map { TrendCalculator.dailyValue(usageByDay[it], metric, tariff) }
@@ -188,6 +191,7 @@ fun TrendsScreen(usage: List<HourlyUsage>, tariff: String, dailyTargetKwh: Int) 
                     Text("$unit FOR EACH HOUR", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
                     Spacer(Modifier.height(8.dp))
                     TrendBarChart(
+                        animationKey = chartKey,
                         values = hourlyValues,
                         labels = (0 until 24).map { hour -> "$hour:00" },
                         // Each bar takes the colour of its tariff period, so expensive hours stand out.
@@ -202,6 +206,7 @@ fun TrendsScreen(usage: List<HourlyUsage>, tariff: String, dailyTargetKwh: Int) 
                     )
                     Spacer(Modifier.height(8.dp))
                     TrendBarChart(
+                        animationKey = chartKey,
                         values = dailyValues.map { (it ?: 0.0).toFloat() },
                         labels = days.map { dayLabel(it, period) },
                         barColors = dailyValues.map { dayColor(it, metric, dailyTargetKwh, average) },
@@ -235,6 +240,7 @@ fun TrendsScreen(usage: List<HourlyUsage>, tariff: String, dailyTargetKwh: Int) 
                 Spacer(Modifier.height(8.dp))
                 if (isDayView) {
                     ComparisonLineChart(
+                        animationKey = chartKey,
                         actual = TrendCalculator.hourlyValues(usageByDay[lastDay], metric, tariff),
                         typical = TrendCalculator.typicalHourlyValues(usageByDay, metric, tariff),
                         labels = (0 until 24).map { hour -> "$hour:00" },
@@ -242,6 +248,7 @@ fun TrendsScreen(usage: List<HourlyUsage>, tariff: String, dailyTargetKwh: Int) 
                     )
                 } else {
                     ComparisonLineChart(
+                        animationKey = chartKey,
                         actual = dailyValues.map { (it ?: 0.0).toFloat() },
                         typical = days.map { TrendCalculator.typicalForWeekday(usageByDay, it, metric, tariff).toFloat() },
                         labels = days.map { dayLabel(it, period) },
