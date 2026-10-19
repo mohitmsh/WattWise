@@ -1,7 +1,6 @@
 # WattWise
 
-WattWise is an Android app that helps a household understand and reduce its electricity use.
-It is the FIT5046 Assessment 4 project of Group 111.
+WattWise is an Android app that helps a household understand and reduce its electricity use. The UI is inspired from Whoop.
 
 The app shows how much power the home uses now, how today compares with a normal day, and what to change to save energy.
 
